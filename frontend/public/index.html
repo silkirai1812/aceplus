@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ACEplus — Spoken English Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+
+<style>
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:        #0d0f14;
+  --bg1:       #13161e;
+  --bg2:       #1a1e29;
+  --bg3:       #222636;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.13);
+  --text:      #e8eaf0;
+  --muted:     #7a7f95;
+  --muted2:    #4e5268;
+
+  --saffron:   #ff9933;
+  --saffron2:  #ffb347;
+  --green:     #138808;
+  --green2:    #1db810;
+  --teal:      #0ea5e9;
+  --teal2:     #38bdf8;
+  --rose:      #f43f5e;
+  --amber:     #f59e0b;
+  --purple:    #8b5cf6;
+
+  --r:         12px;
+  --r2:        20px;
+  --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  font-family: 'Sora', sans-serif;
+}
+
+/* ── RESET ──────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input{font-family:inherit}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── GRAIN OVERLAY ──────────────────────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:999;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity:0.4;
+}
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+.app{max-width:820px;margin:0 auto;padding:24px 16px 80px}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.header{display:flex;align-items:center;gap:14px;padding:28px 0 32px;position:relative}
+.logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--saffron),var(--rose));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 0 24px rgba(255,153,51,0.3)}
+.header-text{flex:1}
+.header-text h1{font-size:24px;font-weight:700;letter-spacing:-0.5px;background:linear-gradient(90deg,var(--saffron2),var(--text));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header-text p{font-size:13px;color:var(--muted);margin-top:2px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.badge{font-size:10px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:20px;border:1px solid var(--border2);color:var(--muted);background:var(--bg2);letter-spacing:0.5px}
+.badge.on{border-color:var(--green);color:var(--green2)}
+
+/* ── CARDS ──────────────────────────────────────────────── */
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:24px;margin-bottom:16px;transition:border-color 0.2s}
+.card:hover{border-color:var(--border2)}
+.card-title{font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title svg{opacity:0.5}
+
+/* ── API KEYS ────────────────────────────────────────────── */
+.key-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.key-row{grid-template-columns:1fr}}
+.key-field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.key-field input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text);font-size:13px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color 0.2s}
+.key-field input:focus{border-color:var(--saffron);box-shadow:0 0 0 3px rgba(255,153,51,0.1)}
+.key-links{display:flex;gap:16px;margin-top:10px;font-size:12px}
+
+/* ── TABS ────────────────────────────────────────────────── */
+.mode-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--r);padding:4px;margin-bottom:16px}
+.mode-tab{flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:500;color:var(--muted);transition:all 0.2s;text-align:center}
+.mode-tab.active{background:var(--bg3);color:var(--text);box-shadow:var(--shadow)}
+
+/* ── SCENARIOS ───────────────────────────────────────────── */
+.scenario-grid{display:flex;gap:8px;flex-wrap:wrap}
+.scenario-btn{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border2);color:var(--muted);background:var(--bg2);transition:all 0.2s}
+.scenario-btn:hover{border-color:var(--saffron);color:var(--saffron)}
+.scenario-btn.active{border-color:var(--saffron);color:var(--saffron);background:rgba(255,153,51,0.08)}
+.target-input{margin-top:12px;display:none}
+.target-input input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s}
+.target-input input:focus{border-color:var(--saffron)}
+.target-input input::placeholder{color:var(--muted2)}
+
+/* ── RECORDER ────────────────────────────────────────────── */
+.recorder-body{display:flex;flex-direction:column;align-items:center;gap:20px;padding:8px 0}
+.mic-btn{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;transition:all 0.3s;position:relative;flex-shrink:0}
+.mic-btn.idle{background:var(--bg2);border:2px solid var(--border2)}
+.mic-btn.idle:hover{border-color:var(--saffron);box-shadow:0 0 20px rgba(255,153,51,0.2)}
+.mic-btn.recording{background:rgba(244,63,94,0.15);border:2px solid var(--rose);animation:pulse-ring 1.5s ease infinite}
+.mic-btn.processing{background:rgba(14,165,233,0.12);border:2px solid var(--teal)}
+.mic-btn.done{background:rgba(19,136,8,0.12);border:2px solid var(--green)}
+
+@keyframes pulse-ring{
+  0%{box-shadow:0 0 0 0 rgba(244,63,94,0.4)}
+  70%{box-shadow:0 0 0 20px rgba(244,63,94,0)}
+  100%{box-shadow:0 0 0 0 rgba(244,63,94,0)}
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.mic-spinner{width:80px;height:80px;border-radius:50%;border:2px solid var(--bg3);border-top-color:var(--teal);animation:spin 0.8s linear infinite;position:absolute}
+
+.waveform{display:flex;align-items:center;gap:3px;height:40px;opacity:0;transition:opacity 0.3s}
+.waveform.visible{opacity:1}
+.wave-bar{width:3px;border-radius:2px;background:var(--saffron);min-height:4px;transition:height 0.1s}
+
+.timer{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);min-height:20px}
+
+.transcript-box{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;font-size:14px;line-height:1.7;color:var(--text);min-height:60px;display:none}
+.transcript-box.visible{display:block}
+.transcript-label{font-size:11px;color:var(--muted);margin-bottom:6px;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+
+.recorder-actions{display:flex;gap:10px;width:100%}
+.btn-primary{flex:1;padding:12px;border-radius:var(--r);font-size:14px;font-weight:600;background:linear-gradient(135deg,var(--saffron),#e8722a);color:#1a0a00;transition:all 0.2s;letter-spacing:0.3px}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,153,51,0.35)}
+.btn-primary:disabled{opacity:0.35;cursor:not-allowed;transform:none}
+.btn-secondary{padding:12px 18px;border-radius:var(--r);font-size:14px;font-weight:500;border:1px solid var(--border2);color:var(--muted);transition:all 0.2s}
+.btn-secondary:hover{border-color:var(--border2);color:var(--text)}
+
+/* ── RESULTS ─────────────────────────────────────────────── */
+#results{display:none}
+#results.visible{display:block}
+
+.word-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0}
+.chip{padding:4px 10px;border-radius:20px;font-size:13px;font-weight:500;cursor:default;position:relative;transition:transform 0.15s}
+.chip:hover{transform:translateY(-1px)}
+.chip.correct{background:rgba(19,136,8,0.15);color:var(--green2);border:1px solid rgba(19,136,8,0.3)}
+.chip.variant{background:rgba(245,158,11,0.15);color:var(--amber);border:1px solid rgba(245,158,11,0.3)}
+.chip.error{background:rgba(244,63,94,0.15);color:var(--rose);border:1px solid rgba(244,63,94,0.3)}
+.chip .tooltip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:4px 8px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:10}
+.chip:hover .tooltip{opacity:1}
+
+.score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:480px){.score-grid{grid-template-columns:repeat(2,1fr)}}
+.score-ring{display:flex;flex-direction:column;align-items:center;gap:8px}
+.ring-wrap{position:relative;width:80px;height:80px}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--bg3);stroke-width:6}
+.ring-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)}
+.ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.ring-label{font-size:11px;color:var(--muted);text-align:center;font-weight:500}
+
+.skill-bars{display:flex;flex-direction:column;gap:12px}
+.skill-row{display:flex;align-items:center;gap:12px}
+.skill-name{font-size:12px;color:var(--muted);width:90px;flex-shrink:0;font-weight:500}
+.skill-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.skill-fill{height:100%;border-radius:3px;width:0;transition:width 1.2s cubic-bezier(0.4,0,0.2,1)}
+.skill-pct{font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--muted);width:34px;text-align:right}
+
+.feedback-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:20px}
+.feedback-summary{font-size:14px;line-height:1.75;color:var(--text);margin-bottom:16px}
+.feedback-lists{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:500px){.feedback-lists{grid-template-columns:1fr}}
+.feedback-list h4{font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.feedback-list.strengths h4{color:var(--green2)}
+.feedback-list.improvements h4{color:var(--amber)}
+.feedback-list ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.feedback-list li{font-size:13px;line-height:1.5;color:var(--muted);padding-left:14px;position:relative}
+.feedback-list.strengths li::before{content:'✓';position:absolute;left:0;color:var(--green2);font-weight:700}
+.feedback-list.improvements li::before{content:'→';position:absolute;left:0;color:var(--amber)}
+.encouragement{font-size:13px;font-style:italic;color:var(--teal2);padding-top:12px;border-top:1px solid var(--border)}
+.listen-btn{display:none;margin-top:14px;padding:9px 18px;border-radius:var(--r);font-size:13px;font-weight:600;background:rgba(14,165,233,0.12);border:1px solid rgba(14,165,233,0.3);color:var(--teal2);transition:all 0.2s}
+.listen-btn.visible{display:inline-flex;align-items:center;gap:7px}
+.listen-btn:hover{background:rgba(14,165,233,0.2)}
+.listen-btn.playing{background:rgba(19,136,8,0.12);border-color:rgba(19,136,8,0.3);color:var(--green2)}
+
+/* ── SESSION HISTORY ─────────────────────────────────────── */
+.history-list{display:flex;flex-direction:column;gap:8px}
+.history-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);font-size:13px}
+.history-score{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:15px;width:36px;text-align:center}
+.history-text{flex:1;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.history-time{font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+.history-empty{color:var(--muted2);font-size:13px;text-align:center;padding:12px}
+
+/* ── ROLEPLAY ────────────────────────────────────────────── */
+#roleplay-panel{display:none}
+#roleplay-panel.visible{display:block}
+.rp-char-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4px}
+@media(max-width:500px){.rp-char-grid{grid-template-columns:repeat(2,1fr)}}
+.rp-char-btn{padding:14px 8px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg2);color:var(--muted);text-align:center;transition:all 0.2s;font-size:13px;font-weight:500}
+.rp-char-btn .emoji{font-size:24px;display:block;margin-bottom:6px}
+.rp-char-btn:hover{border-color:var(--saffron);color:var(--saffron)}
+.rp-char-btn.active{border-color:var(--saffron);color:var(--saffron);background:rgba(255,153,51,0.08)}
+
+.chat-window{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:16px;min-height:200px;max-height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.chat-msg{max-width:80%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.6}
+.chat-msg.character{background:var(--bg3);color:var(--text);border-bottom-left-radius:4px;align-self:flex-start}
+.chat-msg.student{background:rgba(255,153,51,0.12);color:var(--text);border-bottom-right-radius:4px;align-self:flex-end;border:1px solid rgba(255,153,51,0.2)}
+.chat-msg .msg-label{font-size:10px;color:var(--muted);margin-bottom:4px;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px}
+.chat-typing{align-self:flex-start;padding:10px 14px;background:var(--bg3);border-radius:16px;border-bottom-left-radius:4px;display:none}
+.chat-typing.visible{display:flex;gap:4px;align-items:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1.2s infinite}
+.dot:nth-child(2){animation-delay:0.2s}
+.dot:nth-child(3){animation-delay:0.4s}
+@keyframes bounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+
+.rp-controls{display:flex;gap:10px;align-items:center}
+.rp-mic-btn{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all 0.25s;flex-shrink:0}
+.rp-mic-btn.idle{background:var(--bg2);border:2px solid var(--border2)}
+.rp-mic-btn.idle:hover{border-color:var(--saffron);box-shadow:0 0 16px rgba(255,153,51,0.2)}
+.rp-mic-btn.recording{background:rgba(244,63,94,0.15);border:2px solid var(--rose);animation:pulse-ring 1.5s ease infinite}
+.rp-mic-btn.processing{background:rgba(14,165,233,0.12);border:2px solid var(--teal)}
+.rp-status{flex:1;font-size:13px;color:var(--muted);font-style:italic}
+.end-session-btn{padding:10px 16px;border-radius:var(--r);font-size:13px;font-weight:600;border:1px solid rgba(244,63,94,0.3);color:var(--rose);background:rgba(244,63,94,0.07);transition:all 0.2s}
+.end-session-btn:hover{background:rgba(244,63,94,0.13)}
+
+/* ── TRY AGAIN ───────────────────────────────────────────── */
+.try-again-btn{display:block;width:100%;padding:14px;border-radius:var(--r);font-size:14px;font-weight:600;border:1px solid var(--border2);color:var(--muted);background:var(--bg2);text-align:center;transition:all 0.2s;margin-top:4px}
+.try-again-btn:hover{border-color:var(--saffron);color:var(--saffron)}
+
+/* ── LOADING ─────────────────────────────────────────────── */
+.loading-overlay{display:none;flex-direction:column;align-items:center;gap:12px;padding:24px}
+.loading-overlay.visible{display:flex}
+.loading-dots{display:flex;gap:6px}
+.loading-dot{width:8px;height:8px;border-radius:50%;background:var(--saffron);animation:bounce 1s infinite}
+.loading-dot:nth-child(2){animation-delay:0.15s;background:var(--saffron2)}
+.loading-dot:nth-child(3){animation-delay:0.3s;background:var(--rose)}
+.loading-text{font-size:13px;color:var(--muted)}
+
+/* ── TOAST ───────────────────────────────────────────────── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:10px 18px;font-size:13px;color:var(--text);box-shadow:var(--shadow);transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);z-index:1000;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.error{border-color:rgba(244,63,94,0.4);color:var(--rose)}
+.toast.success{border-color:rgba(19,136,8,0.4);color:var(--green2)}
+
+/* ── MISC ────────────────────────────────────────────────── */
+.divider{height:1px;background:var(--border);margin:4px 0}
+.accent-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+
+/* ── AVATAR STAGE ────────────────────────────────────────── */
+.avatar-stage{display:flex;flex-direction:column;align-items:center;padding:20px 16px 12px;gap:12px}
+.avatar-wrap{width:130px;height:130px;position:relative;flex-shrink:0}
+.avatar-wrap svg{width:100%;height:100%;display:block}
+.avatar-speaking-ring{position:absolute;inset:-8px;border-radius:50%;border:3px solid var(--saffron);opacity:0;pointer-events:none;transition:opacity 0.3s}
+.avatar-speaking-ring.active{opacity:0.7;animation:speaking-pulse 0.7s ease infinite}
+@keyframes speaking-pulse{0%,100%{transform:scale(1);opacity:0.7}50%{transform:scale(1.06);opacity:0.3}}
+.speech-bubble{background:var(--bg3);border:1px solid var(--border2);border-radius:18px;border-bottom-left-radius:4px;padding:12px 16px;font-size:14px;line-height:1.65;color:var(--text);max-width:360px;text-align:center;min-height:48px;transition:opacity 0.2s}
+.student-says{width:100%;padding:4px 8px 12px;display:flex;justify-content:flex-end}
+.student-says-inner{display:none;background:rgba(255,153,51,0.1);border:1px solid rgba(255,153,51,0.25);border-radius:16px;border-bottom-right-radius:4px;padding:9px 14px;font-size:13px;line-height:1.5;color:var(--text);max-width:80%}
+.student-says-inner.visible{display:block}
+.student-says-label{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;margin-bottom:3px}
+.avatar-typing-dots{display:none;gap:4px;justify-content:center;padding:4px 0}
+.avatar-typing-dots.visible{display:flex}
+
+/* ── LANG PILLS ──────────────────────────────────────────── */
+.lang-pills{display:flex;gap:8px;flex-wrap:wrap}
+.lang-pill{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid var(--border2);color:var(--muted);background:var(--bg2);transition:all 0.2s;cursor:pointer}
+.lang-pill:hover{border-color:var(--teal);color:var(--teal2)}
+.lang-pill.active{border-color:var(--teal);color:var(--teal2);background:rgba(14,165,233,0.1)}
+
+/* ── SETTINGS TOGGLE ─────────────────────────────────────── */
+.settings-toggle{font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:6px;margin-left:auto}
+.settings-toggle:hover{color:var(--text)}
+#keys-card.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── HEADER ─────────────────────────────── -->
+<header class="header">
+  <div class="logo">🎓</div>
+  <div class="header-text">
+    <h1>ACEplus</h1>
+    <p>Your spoken English coach</p>
+  </div>
+  <div class="badges">
+    <span class="badge" id="badge-sarvam">STT</span>
+    <span class="badge" id="badge-groq">AI</span>
+    <span class="badge" id="badge-tts">TTS</span>
+    <button class="settings-toggle" onclick="toggleKeys()" id="keys-toggle" title="API Settings">⚙️</button>
+  </div>
+</header>
+
+<!-- ── API KEYS ────────────────────────────── -->
+<div class="card" id="keys-card">
+  <div class="card-title">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    API Keys
+  </div>
+  <div class="key-row">
+    <div class="key-field">
+      <label>SARVAM_API_KEY</label>
+      <input type="password" id="sarvam-key" placeholder="sk-..." autocomplete="off"/>
+    </div>
+    <div class="key-field">
+      <label>GROQ_API_KEY</label>
+      <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off"/>
+    </div>
+  </div>
+  <div class="key-links">
+    <a href="https://console.sarvam.ai" target="_blank">↗ Get Sarvam key (free)</a>
+    <a href="https://console.groq.com/keys" target="_blank">↗ Get Groq key (free)</a>
+  </div>
+</div>
+
+<!-- ── MODE TABS ───────────────────────────── -->
+<div class="mode-tabs">
+  <button class="mode-tab active" id="tab-score" onclick="switchMode('score')">🎯 Scoring Mode</button>
+  <button class="mode-tab" id="tab-roleplay" onclick="switchMode('roleplay')">🎭 AI Roleplay</button>
+</div>
+
+<!-- ── SCORING MODE ────────────────────────── -->
+<div id="score-panel">
+
+  <!-- Scenarios -->
+  <div class="card">
+    <div class="card-title">Practice Scenario</div>
+    <div class="scenario-grid">
+      <button class="scenario-btn active" data-scenario="intro" onclick="selectScenario(this)">👋 About Me</button>
+      <button class="scenario-btn" data-scenario="interview" onclick="selectScenario(this)">📚 Class Presentation</button>
+      <button class="scenario-btn" data-scenario="doctor" onclick="selectScenario(this)">🔬 Science Talk</button>
+      <button class="scenario-btn" data-scenario="shopping" onclick="selectScenario(this)">📖 Library Visit</button>
+      <button class="scenario-btn" data-scenario="custom" onclick="selectScenario(this)">✏️ Custom</button>
+    </div>
+    <div class="target-input" id="custom-target">
+      <input type="text" id="target-sentence" placeholder="Type the sentence you want to practice…"/>
+    </div>
+  </div>
+
+  <!-- Recorder -->
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      Record Your Voice
+    </div>
+    <div class="recorder-body">
+      <div style="position:relative">
+        <button class="mic-btn idle" id="mic-btn" onclick="toggleRecording()">🎤</button>
+        <div class="mic-spinner" id="mic-spinner" style="display:none"></div>
+      </div>
+      <div class="waveform" id="waveform">
+        <div class="wave-bar" style="height:8px"></div>
+        <div class="wave-bar" style="height:16px"></div>
+        <div class="wave-bar" style="height:24px"></div>
+        <div class="wave-bar" style="height:16px"></div>
+        <div class="wave-bar" style="height:32px"></div>
+        <div class="wave-bar" style="height:20px"></div>
+        <div class="wave-bar" style="height:28px"></div>
+        <div class="wave-bar" style="height:14px"></div>
+        <div class="wave-bar" style="height:22px"></div>
+        <div class="wave-bar" style="height:10px"></div>
+        <div class="wave-bar" style="height:18px"></div>
+        <div class="wave-bar" style="height:30px"></div>
+      </div>
+      <div class="timer" id="timer"></div>
+      <div style="width:100%">
+        <div class="transcript-label" id="transcript-label" style="display:none">Transcript</div>
+        <div class="transcript-box" id="transcript-box"></div>
+      </div>
+      <div class="recorder-actions" style="width:100%">
+        <button class="btn-primary" id="analyze-btn" disabled onclick="analyzeScore()">Analyze Speech</button>
+      </div>
+    </div>
+    <div class="loading-overlay" id="loading">
+      <div class="loading-dots">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+      <div class="loading-text" id="loading-text">Analyzing your speech…</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <!-- Word chips -->
+    <div class="card">
+      <div class="card-title">Word Analysis</div>
+      <div class="word-chips" id="word-chips"></div>
+      <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--muted)">
+        <span><span class="accent-dot" style="background:var(--green2);margin-right:4px"></span>Correct</span>
+        <span><span class="accent-dot" style="background:var(--amber);margin-right:4px"></span>Indian variant</span>
+        <span><span class="accent-dot" style="background:var(--rose);margin-right:4px"></span>Needs work</span>
+      </div>
+    </div>
+
+    <!-- Score rings + bars -->
+    <div class="card">
+      <div class="card-title">Scores</div>
+      <div class="score-grid" id="score-rings"></div>
+      <div class="divider" style="margin:20px 0 16px"></div>
+      <div class="skill-bars" id="skill-bars"></div>
+    </div>
+
+    <!-- AI Feedback -->
+    <div class="card">
+      <div class="card-title">AI Feedback</div>
+      <div class="feedback-card" id="feedback-content">
+        <div class="feedback-summary" id="feedback-summary"></div>
+        <div class="feedback-lists">
+          <div class="feedback-list strengths">
+            <h4>Strengths</h4>
+            <ul id="feedback-strengths"></ul>
+          </div>
+          <div class="feedback-list improvements">
+            <h4>Improve</h4>
+            <ul id="feedback-improvements"></ul>
+          </div>
+        </div>
+        <div class="encouragement" id="feedback-encouragement"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">
+          <span style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px">AUDIO FEEDBACK IN:</span>
+          <div class="lang-pills" id="tts-lang-pills">
+            <button class="lang-pill active" data-lang="hi-IN" onclick="setLang(this,'score')">🇮🇳 Hindi</button>
+            <button class="lang-pill" data-lang="bn-IN" onclick="setLang(this,'score')">🇧🇩 Bangla</button>
+            <button class="lang-pill" data-lang="en-IN" onclick="setLang(this,'score')">🇬🇧 English</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button class="listen-btn" id="listen-btn" onclick="playAudio()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            🔊 Listen to Feedback
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session history -->
+    <div class="card" id="history-card" style="display:none">
+      <div class="card-title">Session History</div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+    <button class="try-again-btn" onclick="tryAgain()">↩ Try Again</button>
+  </div>
+
+</div><!-- /#score-panel -->
+
+<!-- ── ROLEPLAY MODE ────────────────────────── -->
+<div id="roleplay-panel">
+
+  <div class="card">
+    <div class="card-title">Choose Your Character</div>
+    <div class="rp-char-grid">
+      <button class="rp-char-btn active" data-char="interview" onclick="selectChar(this)">
+        <span class="emoji">👩‍🏫</span>Class Teacher
+      </button>
+      <button class="rp-char-btn" data-char="doctor" onclick="selectChar(this)">
+        <span class="emoji">🧑‍🤝‍🧑</span>Classmate
+      </button>
+      <button class="rp-char-btn" data-char="shopping" onclick="selectChar(this)">
+        <span class="emoji">📚</span>Librarian
+      </button>
+      <button class="rp-char-btn" data-char="custom" onclick="selectChar(this)">
+        <span class="emoji">💬</span>Buddy Chat
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Conversation</div>
+    <!-- Avatar Stage -->
+    <div class="avatar-stage">
+      <div class="avatar-wrap">
+        <div class="avatar-speaking-ring" id="avatar-ring"></div>
+        <div id="avatar-display"></div>
+      </div>
+      <div class="speech-bubble" id="avatar-bubble">Select a character above and press the mic to start!</div>
+      <div class="avatar-typing-dots" id="avatar-typing">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+    <!-- Student reply -->
+    <div class="student-says" style="min-height:8px">
+      <div class="student-says-inner" id="student-bubble">
+        <div class="student-says-label">YOU SAID</div>
+        <div id="student-bubble-text"></div>
+      </div>
+    </div>
+    <div style="height:1px;background:var(--border);margin:14px 0"></div>
+    <div class="rp-controls">
+      <button class="rp-mic-btn idle" id="rp-mic-btn" onclick="toggleRoleplayRecording()">🎤</button>
+      <span class="rp-status" id="rp-status">Press mic to speak</span>
+      <button class="end-session-btn" onclick="endRoleplay()">End Session</button>
+    </div>
+  </div>
+
+  <!-- Roleplay Evaluation -->
+  <div id="rp-eval-section" style="display:none">
+    <div class="card">
+      <div class="card-title">Session Evaluation</div>
+      <div id="rp-eval-loading" style="text-align:center;padding:24px;color:var(--muted)">
+        <div class="loading-dots"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>
+        <div style="margin-top:12px;font-size:13px">Evaluating your conversation…</div>
+      </div>
+      <div id="rp-eval-content" style="display:none">
+        <div class="score-grid" id="rp-score-rings"></div>
+        <div class="divider" style="margin:20px 0 16px"></div>
+        <div class="skill-bars" id="rp-skill-bars"></div>
+        <div class="feedback-card" style="margin-top:16px">
+          <div class="feedback-summary" id="rp-feedback-summary"></div>
+          <div class="feedback-lists">
+            <div class="feedback-list strengths"><h4>Strengths</h4><ul id="rp-feedback-strengths"></ul></div>
+            <div class="feedback-list improvements"><h4>Improve</h4><ul id="rp-feedback-improvements"></ul></div>
+          </div>
+          <div class="encouragement" id="rp-feedback-encouragement"></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">
+            <span style="font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px">AUDIO FEEDBACK IN:</span>
+            <div class="lang-pills" id="rp-tts-lang-pills">
+              <button class="lang-pill active" data-lang="hi-IN" onclick="setLang(this,'rp')">🇮🇳 Hindi</button>
+              <button class="lang-pill" data-lang="bn-IN" onclick="setLang(this,'rp')">🇧🇩 Bangla</button>
+              <button class="lang-pill" data-lang="en-IN" onclick="setLang(this,'rp')">🇬🇧 English</button>
+            </div>
+          </div>
+          <div style="margin-top:10px">
+            <button class="listen-btn" id="rp-listen-btn" onclick="playRpAudio()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+              🔊 Listen to Feedback
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="try-again-btn" onclick="resetRoleplayFull()">↩ New Session</button>
+  </div>
+
+</div><!-- /#roleplay-panel -->
+
+</div><!-- /.app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ─────────────────────────────────────────────────────────────────
+const BACKEND = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:10000'
+  : '%%BACKEND_URL%%';
+
+// ─── AVATARS ─────────────────────────────────────────────────────────────────
+const AVATARS = {
+  interview: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="49" fill="#0e7490" opacity="0.18"/>
+    <circle cx="50" cy="54" r="28" fill="#f4c2a1"/>
+    <ellipse cx="50" cy="29" rx="18" ry="13" fill="#6b4226"/>
+    <circle cx="50" cy="22" r="10" fill="#6b4226"/>
+    <rect x="28" y="40" width="16" height="11" rx="5" fill="none" stroke="#0e7490" stroke-width="2.2"/>
+    <rect x="56" y="40" width="16" height="11" rx="5" fill="none" stroke="#0e7490" stroke-width="2.2"/>
+    <line x1="44" y1="45" x2="56" y2="45" stroke="#0e7490" stroke-width="2.2"/>
+    <circle cx="36" cy="46" r="3" fill="#333"/>
+    <circle cx="64" cy="46" r="3" fill="#333"/>
+    <circle cx="50" cy="59" r="2.5" fill="#e09070"/>
+    <path id="avatar-mouth" d="M41 66 Q50 74 59 66" fill="none" stroke="#b06040" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="50" cy="91" rx="24" ry="12" fill="#0e7490" opacity="0.45"/>
+  </svg>`,
+  doctor: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="49" fill="#16a34a" opacity="0.18"/>
+    <circle cx="50" cy="54" r="28" fill="#f8d5a3"/>
+    <ellipse cx="50" cy="28" rx="20" ry="13" fill="#c0780a"/>
+    <path d="M30 30 Q35 18 41 26 Q46 14 50 22 Q54 14 59 24 Q65 18 70 30 Q65 24 30 30z" fill="#c0780a"/>
+    <circle cx="36" cy="47" r="4" fill="#333"/>
+    <circle cx="64" cy="47" r="4" fill="#333"/>
+    <circle cx="37" cy="46" r="1.5" fill="white"/>
+    <circle cx="65" cy="46" r="1.5" fill="white"/>
+    <circle cx="50" cy="59" r="2.5" fill="#e0a070"/>
+    <path id="avatar-mouth" d="M41 66 Q50 74 59 66" fill="none" stroke="#b06040" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="50" cy="91" rx="24" ry="12" fill="#16a34a" opacity="0.45"/>
+  </svg>`,
+  shopping: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="49" fill="#7c3aed" opacity="0.18"/>
+    <circle cx="50" cy="54" r="28" fill="#c68642"/>
+    <ellipse cx="50" cy="27" rx="18" ry="13" fill="#2a1508"/>
+    <ellipse cx="50" cy="22" rx="14" ry="9" fill="#2a1508"/>
+    <circle cx="36" cy="46" r="9" fill="none" stroke="#7c3aed" stroke-width="2.2"/>
+    <circle cx="64" cy="46" r="9" fill="none" stroke="#7c3aed" stroke-width="2.2"/>
+    <line x1="45" y1="46" x2="55" y2="46" stroke="#7c3aed" stroke-width="2.2"/>
+    <line x1="27" y1="46" x2="22" y2="43" stroke="#7c3aed" stroke-width="2.2"/>
+    <line x1="73" y1="46" x2="78" y2="43" stroke="#7c3aed" stroke-width="2.2"/>
+    <circle cx="36" cy="46" r="4" fill="#333"/>
+    <circle cx="64" cy="46" r="4" fill="#333"/>
+    <circle cx="50" cy="60" r="2.5" fill="#a07040"/>
+    <path id="avatar-mouth" d="M41 67 Q50 75 59 67" fill="none" stroke="#804020" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="50" cy="91" rx="24" ry="12" fill="#7c3aed" opacity="0.45"/>
+  </svg>`,
+  custom: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="49" fill="#f97316" opacity="0.18"/>
+    <circle cx="50" cy="54" r="28" fill="#ffe0cc"/>
+    <circle cx="33" cy="32" r="9" fill="#8B4513"/>
+    <circle cx="50" cy="25" r="11" fill="#8B4513"/>
+    <circle cx="67" cy="32" r="9" fill="#8B4513"/>
+    <circle cx="28" cy="43" r="7" fill="#8B4513"/>
+    <circle cx="72" cy="43" r="7" fill="#8B4513"/>
+    <ellipse cx="50" cy="30" rx="17" ry="9" fill="#8B4513"/>
+    <circle cx="36" cy="47" r="4" fill="#333"/>
+    <circle cx="64" cy="47" r="4" fill="#333"/>
+    <circle cx="37" cy="46" r="1.5" fill="white"/>
+    <circle cx="65" cy="46" r="1.5" fill="white"/>
+    <ellipse cx="37" cy="53" rx="5" ry="2.5" fill="#ffb3a0" opacity="0.7"/>
+    <ellipse cx="63" cy="53" rx="5" ry="2.5" fill="#ffb3a0" opacity="0.7"/>
+    <circle cx="50" cy="59" r="2.5" fill="#f0a080"/>
+    <path id="avatar-mouth" d="M41 66 Q50 74 59 66" fill="none" stroke="#d06040" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="50" cy="91" rx="24" ry="12" fill="#f97316" opacity="0.45"/>
+  </svg>`,
+};
+
+const MOUTH_CLOSED = {
+  interview: 'M41 66 Q50 74 59 66',
+  doctor:    'M41 66 Q50 74 59 66',
+  shopping:  'M41 67 Q50 75 59 67',
+  custom:    'M41 66 Q50 74 59 66',
+};
+const MOUTH_OPEN = {
+  interview: 'M42 65 Q50 76 58 65 Q50 62 42 65',
+  doctor:    'M42 65 Q50 76 58 65 Q50 62 42 65',
+  shopping:  'M42 66 Q50 77 58 66 Q50 63 42 66',
+  custom:    'M42 65 Q50 76 58 65 Q50 62 42 65',
+};
+
+// ─── KNOWN ERRORS & VARIANTS ─────────────────────────────────────────────────
+const KNOWN_ERRORS = {
+  'dehradoon':'Dehradun','softwear':'software','tree':'three',
+  'free':'three','tinking':'thinking','dis':'this','dat':'that',
+  'wery':'very','wideo':'video','wit':'with','went':'went',
+  'yello':'yellow','yersterday':'yesterday','todays':'today',
+  'goings':'going','speakings':'speaking','listenings':'listening',
+};
+const INDIAN_VARIANTS = new Set([
+  'colour','centre','behaviour','maths','programme','flavour',
+  'honour','neighbour','defence','licence','organisation',
+  'realise','recognise','analyse','learnt','spelt','dreamt',
+  'amongst','whilst','fortnight','lakh','crore','prepone',
+]);
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let mediaRecorder=null, audioChunks=[], recording=false;
+let timerInterval=null, timerSecs=0;
+let waveInterval=null;
+let currentTranscript='';
+let currentAudioBase64=null;
+let currentAudio=null;
+let sessionHistory=[];
+let currentMode='score';
+let currentTtsLang='hi-IN';
+let currentRpTtsLang='hi-IN';
+// Roleplay state
+let rpMediaRecorder=null, rpChunks=[], rpRecording=false;
+let rpHistory=[];
+let rpCharacter='interview';
+let rpSessionActive=false;
+let avatarMouthInterval=null;
+let mouthIsOpen=false;
+
+// ─── API KEYS ─────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', ()=>{
+  const sk=localStorage.getItem('sarvam_key');
+  const gk=localStorage.getItem('groq_key');
+  if(sk) document.getElementById('sarvam-key').value=sk;
+  if(gk) document.getElementById('groq-key').value=gk;
+  updateBadges();
+  // Auto-hide keys card if both keys are already configured
+  if(sk && gk) document.getElementById('keys-card').classList.add('hidden');
+  resetRoleplay();
+});
+
+function toggleKeys(){
+  const card=document.getElementById('keys-card');
+  card.classList.toggle('hidden');
+}
+document.getElementById('sarvam-key').addEventListener('input',e=>{
+  localStorage.setItem('sarvam_key',e.target.value.trim());
+  updateBadges();
+});
+document.getElementById('groq-key').addEventListener('input',e=>{
+  localStorage.setItem('groq_key',e.target.value.trim());
+  updateBadges();
+});
+function updateBadges(){
+  const sk=!!localStorage.getItem('sarvam_key');
+  const gk=!!localStorage.getItem('groq_key');
+  document.getElementById('badge-sarvam').classList.toggle('on',sk);
+  document.getElementById('badge-groq').classList.toggle('on',gk);
+  document.getElementById('badge-tts').classList.toggle('on',sk);
+}
+function getHeaders(){
+  return {
+    'x-sarvam-key': localStorage.getItem('sarvam_key')||'',
+    'x-groq-key': localStorage.getItem('groq_key')||'',
+    'Content-Type':'application/json',
+  };
+}
+
+// ─── MODE SWITCH ──────────────────────────────────────────────────────────────
+function switchMode(mode){
+  currentMode=mode;
+  document.getElementById('tab-score').classList.toggle('active',mode==='score');
+  document.getElementById('tab-roleplay').classList.toggle('active',mode==='roleplay');
+  document.getElementById('score-panel').style.display=mode==='score'?'block':'none';
+  document.getElementById('roleplay-panel').style.display=mode==='roleplay'?'block':'none';
+}
+
+// ─── SCENARIO ─────────────────────────────────────────────────────────────────
+const SCENARIO_PROMPTS={
+  intro:'Tell me about yourself — your name, your school, and your favourite subject.',
+  interview:'Tell the class about your favourite topic or hobby in 3-4 sentences.',
+  doctor:'Explain your science project — what it is about and what you learned from it.',
+  shopping:'Ask the librarian to help you find a book on your favourite topic.',
+  custom:'',
+};
+let currentScenario='intro';
+function selectScenario(el){
+  document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  currentScenario=el.dataset.scenario;
+  document.getElementById('custom-target').style.display=currentScenario==='custom'?'block':'none';
+}
+
+// ─── RECORDING (SCORE MODE) ────────────────────────────────────────────────────
+function setMicState(state){
+  const btn=document.getElementById('mic-btn');
+  const spinner=document.getElementById('mic-spinner');
+  btn.className='mic-btn '+state;
+  const icons={idle:'🎤',recording:'⏹',processing:'⏳',done:'✅'};
+  btn.textContent=icons[state]||'🎤';
+  spinner.style.display=state==='processing'?'block':'none';
+}
+
+async function toggleRecording(){
+  if(recording){
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'});
+    audioChunks=[];
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=processRecording;
+    mediaRecorder.start(100);
+    recording=true;
+    setMicState('recording');
+    document.getElementById('waveform').classList.add('visible');
+    startTimer();
+    startWaveAnim();
+    document.getElementById('analyze-btn').disabled=true;
+  }catch(err){
+    showToast('Microphone access denied: '+err.message,'error');
+  }
+}
+
+function stopRecording(){
+  if(!mediaRecorder) return;
+  recording=false;
+  mediaRecorder.stop();
+  mediaRecorder.stream.getTracks().forEach(t=>t.stop());
+  setMicState('processing');
+  stopTimer();
+  stopWaveAnim();
+}
+
+async function processRecording(){
+  const blob=new Blob(audioChunks,{type:'audio/webm'});
+  const formData=new FormData();
+  formData.append('audio',blob,'audio.webm');
+  // Pass API keys via headers (backend reads them)
+  try{
+    setLoadingText('Transcribing with Sarvam STT…');
+    const res=await fetch(`${BACKEND}/api/transcribe`,{
+      method:'POST',
+      headers:{
+        'x-sarvam-key':localStorage.getItem('sarvam_key')||'',
+      },
+      body:formData,
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Transcription failed');
+    currentTranscript=data.transcript||'';
+    showTranscript(currentTranscript);
+    setMicState('done');
+    if(data.languageWarning){
+      showToast('⚠️ '+data.languageWarning,'error');
+      document.getElementById('analyze-btn').disabled=true;
+    } else {
+      document.getElementById('analyze-btn').disabled=!currentTranscript;
+    }
+  }catch(err){
+    showToast(err.message,'error');
+    setMicState('idle');
+  }
+}
+
+function showTranscript(text){
+  const box=document.getElementById('transcript-box');
+  const label=document.getElementById('transcript-label');
+  box.textContent=text;
+  box.classList.add('visible');
+  label.style.display='block';
+}
+
+// ─── TIMER & WAVE ─────────────────────────────────────────────────────────────
+function startTimer(){
+  timerSecs=0;
+  timerInterval=setInterval(()=>{
+    timerSecs++;
+    const m=Math.floor(timerSecs/60).toString().padStart(2,'0');
+    const s=(timerSecs%60).toString().padStart(2,'0');
+    document.getElementById('timer').textContent=`${m}:${s}`;
+  },1000);
+}
+function stopTimer(){clearInterval(timerInterval);document.getElementById('timer').textContent='';}
+
+function startWaveAnim(){
+  const bars=document.querySelectorAll('.wave-bar');
+  waveInterval=setInterval(()=>{
+    bars.forEach(b=>{
+      b.style.height=Math.random()*32+4+'px';
+    });
+  },120);
+}
+function stopWaveAnim(){
+  clearInterval(waveInterval);
+  document.getElementById('waveform').classList.remove('visible');
+}
+
+// ─── SCORING ─────────────────────────────────────────────────────────────────
+function scoreTranscript(transcript,target){
+  const words=transcript.toLowerCase().split(/\s+/).filter(Boolean);
+  const targetWords=target?target.toLowerCase().split(/\s+/).filter(Boolean):[];
+
+  let badWords=[],okWords=[],correctWords=[];
+  words.forEach(w=>{
+    const clean=w.replace(/[^a-z']/g,'');
+    if(KNOWN_ERRORS[clean]){badWords.push(clean);}
+    else if(INDIAN_VARIANTS.has(clean)){okWords.push(clean);}
+    else{correctWords.push(clean);}
+  });
+
+  // Pronunciation: ratio of clean words, penalise bad
+  const pronBase=words.length>0?(correctWords.length+okWords.length)/words.length:0.8;
+  const pronScore=Math.round(Math.min(100,pronBase*100-(badWords.length*5)));
+
+  // Grammar: detect present-continuous overuse
+  const gramPenalty=(transcript.match(/\b(am|is|are)\s+(having|knowing|wanting|understanding|seeing|hearing)\b/gi)||[]).length*10;
+  const gramScore=Math.max(30,Math.min(100,88-gramPenalty));
+
+  // Fluency: word count vs target (or vs ideal range)
+  let fluScore=80;
+  if(targetWords.length>0){
+    const ratio=Math.min(words.length/targetWords.length,targetWords.length/words.length);
+    fluScore=Math.round(ratio*100);
+  } else {
+    fluScore=words.length>=10?Math.min(100,70+(words.length-10)*1.5):Math.max(30,words.length*7);
+  }
+
+  // Vocab: lexical diversity
+  const unique=new Set(words).size;
+  const vocabScore=words.length>0?Math.round(Math.min(100,(unique/words.length)*120)):50;
+
+  return{pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words};
+}
+
+async function analyzeScore(){
+  if(!currentTranscript) return;
+  const target=currentScenario==='custom'
+    ?document.getElementById('target-sentence').value
+    :SCENARIO_PROMPTS[currentScenario]||'';
+
+  const{pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words}=scoreTranscript(currentTranscript,target);
+
+  showLoading(true);
+  setLoadingText('Getting AI feedback…');
+
+  try{
+    const res=await fetch(`${BACKEND}/api/score`,{
+      method:'POST',
+      headers:getHeaders(),
+      body:JSON.stringify({transcript:currentTranscript,target,pronScore,gramScore,fluScore,vocabScore,badWords,okWords,ttsLang:currentTtsLang}),
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Scoring failed');
+
+    currentAudioBase64=data.audioBase64;
+    lastScorePayload={transcript:currentTranscript,target,pronScore,gramScore,fluScore,vocabScore,badWords,okWords};
+    renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback:data.feedback});
+    addHistory(currentTranscript,Math.round((pronScore+gramScore+fluScore+vocabScore)/4));
+  }catch(err){
+    showToast(err.message,'error');
+  }finally{
+    showLoading(false);
+  }
+}
+
+function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback}){
+  // Word chips
+  const chips=document.getElementById('word-chips');
+  chips.innerHTML='';
+  words.forEach(w=>{
+    const clean=w.replace(/[^a-z']/g,'');
+    const isErr=KNOWN_ERRORS[clean];
+    const isVariant=INDIAN_VARIANTS.has(clean);
+    const cls=isErr?'error':isVariant?'variant':'correct';
+    const tip=isErr?`Did you mean "${KNOWN_ERRORS[clean]}"?`:isVariant?'Accepted Indian English variant':'';
+    chips.innerHTML+=`<span class="chip ${cls}">${w}${tip?`<span class="tooltip">${tip}</span>`:''}</span>`;
+  });
+
+  // Score rings
+  const overall=Math.round((pronScore+gramScore+fluScore+vocabScore)/4);
+  const rings=[
+    {label:'Overall',score:overall,color:'#ff9933'},
+    {label:'Pronunciation',score:pronScore,color:'#0ea5e9'},
+    {label:'Grammar',score:gramScore,color:'#8b5cf6'},
+    {label:'Fluency',score:fluScore,color:'#f43f5e'},
+  ];
+  const ringsEl=document.getElementById('score-rings');
+  ringsEl.innerHTML='';
+  rings.forEach(r=>{
+    const circ=2*Math.PI*34;
+    const offset=circ*(1-r.score/100);
+    ringsEl.innerHTML+=`
+      <div class="score-ring">
+        <div class="ring-wrap">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle class="ring-bg" cx="40" cy="40" r="34"/>
+            <circle class="ring-fill" cx="40" cy="40" r="34"
+              stroke="${r.color}"
+              stroke-dasharray="${circ}"
+              stroke-dashoffset="${circ}"
+              data-offset="${offset}"
+              id="ring-${r.label.toLowerCase().replace(' ','-')}"/>
+          </svg>
+          <div class="ring-value" style="color:${r.color}">${r.score}</div>
+        </div>
+        <div class="ring-label">${r.label}</div>
+      </div>`;
+  });
+
+  // Skill bars
+  const skills=[
+    {name:'Pronunciation',score:pronScore,color:'#0ea5e9'},
+    {name:'Grammar',score:gramScore,color:'#8b5cf6'},
+    {name:'Fluency',score:fluScore,color:'#f43f5e'},
+    {name:'Vocabulary',score:vocabScore,color:'#f59e0b'},
+  ];
+  const barsEl=document.getElementById('skill-bars');
+  barsEl.innerHTML='';
+  skills.forEach(s=>{
+    barsEl.innerHTML+=`
+      <div class="skill-row">
+        <div class="skill-name">${s.name}</div>
+        <div class="skill-track"><div class="skill-fill" data-score="${s.score}" style="background:${s.color}"></div></div>
+        <div class="skill-pct">${s.score}%</div>
+      </div>`;
+  });
+
+  // Feedback
+  if(feedback){
+    document.getElementById('feedback-summary').textContent=feedback.summary||'';
+    const str=document.getElementById('feedback-strengths');
+    str.innerHTML=(feedback.strengths||[]).map(s=>`<li>${s}</li>`).join('');
+    const imp=document.getElementById('feedback-improvements');
+    imp.innerHTML=(feedback.improvements||[]).map(i=>`<li>${i}</li>`).join('');
+    document.getElementById('feedback-encouragement').textContent=feedback.encouragement||'';
+    if(currentAudioBase64){
+      const btn=document.getElementById('listen-btn');
+      btn.classList.add('visible');
+    }
+  }
+
+  // Show results section
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').style.display='block';
+
+  // Animate rings & bars after paint
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      document.querySelectorAll('.ring-fill').forEach(el=>{
+        el.style.strokeDashoffset=el.dataset.offset;
+      });
+      document.querySelectorAll('.skill-fill').forEach(el=>{
+        el.style.width=el.dataset.score+'%';
+      });
+    },50);
+  });
+
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ─── LANGUAGE PILLS ───────────────────────────────────────────────────────────
+let lastScorePayload=null;
+
+function setLang(el, scope){
+  const pills=el.closest('.lang-pills').querySelectorAll('.lang-pill');
+  pills.forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  const lang=el.dataset.lang;
+  if(scope==='score'){
+    currentTtsLang=lang;
+    if(lastScorePayload) onLangChange();
+  } else {
+    currentRpTtsLang=lang;
+    if(lastRpScorePayload) onRpLangChange();
+  }
+}
+
+const LISTEN_BTN_HTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
+
+async function onLangChange(){
+  if(!lastScorePayload) return;
+  // Stop playing audio immediately — do NOT auto-play new one
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  const btn=document.getElementById('listen-btn');
+  btn.innerHTML='⏳ Fetching audio…';
+  btn.classList.remove('playing');
+  btn.disabled=true;
+  try{
+    const res=await fetch(`${BACKEND}/api/score`,{method:'POST',headers:getHeaders(),body:JSON.stringify({...lastScorePayload,ttsLang:currentTtsLang})});
+    const data=await res.json();
+    if(data.audioBase64){
+      currentAudioBase64=data.audioBase64;
+      showToast('Audio ready — press Listen','success');
+    }
+  }catch(e){showToast('Could not update audio','error');}
+  finally{
+    btn.innerHTML=LISTEN_BTN_HTML;
+    btn.disabled=false;
+  }
+}
+async function onRpLangChange(){
+  if(!lastRpScorePayload) return;
+  // Stop playing audio immediately — do NOT auto-play new one
+  if(rpAudioObj){rpAudioObj.pause();rpAudioObj=null;}
+  const btn=document.getElementById('rp-listen-btn');
+  btn.innerHTML='⏳ Fetching audio…';
+  btn.classList.remove('playing');
+  btn.disabled=true;
+  try{
+    const res=await fetch(`${BACKEND}/api/score`,{method:'POST',headers:getHeaders(),body:JSON.stringify({...lastRpScorePayload,ttsLang:currentRpTtsLang})});
+    const data=await res.json();
+    if(data.audioBase64){
+      rpAudioBase64=data.audioBase64;
+      showToast('Audio ready — press Listen','success');
+    }
+  }catch(e){showToast('Could not update audio','error');}
+  finally{
+    btn.innerHTML=LISTEN_BTN_HTML;
+    btn.disabled=false;
+  }
+}
+
+// ─── AUDIO PLAYBACK ───────────────────────────────────────────────────────────
+function playAudio(){
+  if(!currentAudioBase64) return;
+  const btn=document.getElementById('listen-btn');
+  if(currentAudio){currentAudio.pause();currentAudio=null;}
+  const bytes=atob(currentAudioBase64);
+  const arr=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob=new Blob([arr],{type:'audio/wav'});
+  const url=URL.createObjectURL(blob);
+  currentAudio=new Audio(url);
+  currentAudio.onended=()=>{
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> Listen to feedback';
+    btn.classList.remove('playing');
+  };
+  currentAudio.play();
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Playing…';
+  btn.classList.add('playing');
+}
+
+function playBase64Audio(b64,onEnded,onStart){
+  const bytes=atob(b64);
+  const arr=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob=new Blob([arr],{type:'audio/wav'});
+  const url=URL.createObjectURL(blob);
+  const audio=new Audio(url);
+  if(onStart) onStart();
+  audio.onended=onEnded||null;
+  audio.play();
+  return audio;
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+function addHistory(transcript,score){
+  sessionHistory.unshift({transcript,score,time:new Date()});
+  if(sessionHistory.length>10) sessionHistory.pop();
+  renderHistory();
+}
+function renderHistory(){
+  const card=document.getElementById('history-card');
+  const list=document.getElementById('history-list');
+  if(!sessionHistory.length){card.style.display='none';return;}
+  card.style.display='block';
+  const color=s=>s>=80?'var(--green2)':s>=60?'var(--amber)':'var(--rose)';
+  list.innerHTML=sessionHistory.map(h=>`
+    <div class="history-item">
+      <span class="history-score" style="color:${color(h.score)}">${h.score}</span>
+      <span class="history-text">${h.transcript}</span>
+      <span class="history-time">${h.time.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+    </div>`).join('');
+}
+
+// ─── TRY AGAIN ────────────────────────────────────────────────────────────────
+function tryAgain(){
+  currentTranscript='';
+  currentAudioBase64=null;
+  document.getElementById('results').style.display='none';
+  document.getElementById('results').classList.remove('visible');
+  document.getElementById('transcript-box').classList.remove('visible');
+  document.getElementById('transcript-label').style.display='none';
+  document.getElementById('analyze-btn').disabled=true;
+  document.getElementById('listen-btn').classList.remove('visible','playing');
+  setMicState('idle');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ─── AVATAR ANIMATION ─────────────────────────────────────────────────────────
+function startAvatarSpeaking(){
+  const ring=document.getElementById('avatar-ring');
+  if(ring) ring.classList.add('active');
+  mouthIsOpen=false;
+  avatarMouthInterval=setInterval(()=>{
+    mouthIsOpen=!mouthIsOpen;
+    const m=document.querySelector('#avatar-display #avatar-mouth');
+    if(m) m.setAttribute('d', mouthIsOpen ? (MOUTH_OPEN[rpCharacter]||MOUTH_OPEN.custom) : (MOUTH_CLOSED[rpCharacter]||MOUTH_CLOSED.custom));
+    if(m) m.setAttribute('fill', mouthIsOpen ? '#6b1010' : 'none');
+  }, 220);
+}
+
+function stopAvatarSpeaking(){
+  clearInterval(avatarMouthInterval);
+  avatarMouthInterval=null;
+  const ring=document.getElementById('avatar-ring');
+  if(ring) ring.classList.remove('active');
+  const m=document.querySelector('#avatar-display #avatar-mouth');
+  if(m){ m.setAttribute('d', MOUTH_CLOSED[rpCharacter]||MOUTH_CLOSED.custom); m.setAttribute('fill','none'); }
+}
+
+function renderAvatar(char){
+  const el=document.getElementById('avatar-display');
+  el.innerHTML=AVATARS[char]||AVATARS.custom;
+}
+
+function showSpeechBubble(text){
+  document.getElementById('avatar-bubble').textContent=text;
+}
+
+function showStudentBubble(text){
+  const wrap=document.getElementById('student-bubble');
+  const textEl=document.getElementById('student-bubble-text');
+  textEl.textContent=text;
+  wrap.classList.add('visible');
+}
+
+function hideStudentBubble(){
+  document.getElementById('student-bubble').classList.remove('visible');
+}
+
+// ─── ROLEPLAY MODE ────────────────────────────────────────────────────────────
+const CHAR_INTROS={
+  interview:'Hello! Welcome to class. Today I\'d like you to give a short presentation. Tell us about your favourite subject or hobby — what do you enjoy most and why?',
+  doctor:'Hey! I heard you\'re working on a science project. That sounds so cool! What is your project about?',
+  shopping:'Hello there! Welcome to the school library. Are you looking for a book today? What kind of stories or topics do you enjoy?',
+  custom:'Hi! Great to talk with you. What would you like to chat about today — school, friends, hobbies, or something else?',
+};
+
+function selectChar(el){
+  document.querySelectorAll('.rp-char-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  rpCharacter=el.dataset.char;
+  resetRoleplay();
+}
+
+function resetRoleplay(){
+  rpHistory=[];
+  rpSessionActive=false;
+  stopAvatarSpeaking();
+  renderAvatar(rpCharacter);
+  showSpeechBubble(CHAR_INTROS[rpCharacter]||CHAR_INTROS.custom);
+  hideStudentBubble();
+  document.getElementById('avatar-typing').classList.remove('visible');
+  document.getElementById('rp-status').textContent='Press mic to speak';
+  setRpMicState('idle');
+}
+
+function setRpMicState(state){
+  const btn=document.getElementById('rp-mic-btn');
+  btn.className='rp-mic-btn '+state;
+  const icons={idle:'🎤',recording:'⏹',processing:'⏳'};
+  btn.textContent=icons[state]||'🎤';
+}
+
+async function toggleRoleplayRecording(){
+  if(rpRecording){
+    stopRoleplayRecording();
+  } else {
+    await startRoleplayRecording();
+  }
+}
+
+async function startRoleplayRecording(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    rpMediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm'});
+    rpChunks=[];
+    rpMediaRecorder.ondataavailable=e=>rpChunks.push(e.data);
+    rpMediaRecorder.onstop=processRoleplayRecording;
+    rpMediaRecorder.start(100);
+    rpRecording=true;
+    setRpMicState('recording');
+    document.getElementById('rp-status').textContent='Recording… tap to stop';
+  }catch(err){
+    showToast('Microphone access denied','error');
+  }
+}
+
+function stopRoleplayRecording(){
+  if(!rpMediaRecorder) return;
+  rpRecording=false;
+  rpMediaRecorder.stop();
+  rpMediaRecorder.stream.getTracks().forEach(t=>t.stop());
+  setRpMicState('processing');
+  document.getElementById('rp-status').textContent='Transcribing…';
+}
+
+async function processRoleplayRecording(){
+  const blob=new Blob(rpChunks,{type:'audio/webm'});
+  const formData=new FormData();
+  formData.append('audio',blob,'audio.webm');
+  try{
+    const res=await fetch(`${BACKEND}/api/transcribe`,{
+      method:'POST',
+      headers:{'x-sarvam-key':localStorage.getItem('sarvam_key')||''},
+      body:formData,
+    });
+    const data=await res.json();
+    if(!res.ok||!data.transcript) throw new Error(data.error||'Could not hear you');
+
+    const transcript=data.transcript;
+    if(data.languageWarning) showToast('⚠️ '+data.languageWarning,'error');
+    showStudentBubble(transcript);
+    rpHistory.push({role:'user',text:transcript});
+
+    document.getElementById('avatar-typing').classList.add('visible');
+    document.getElementById('rp-status').textContent='Character is thinking…';
+
+    const rpRes=await fetch(`${BACKEND}/api/roleplay`,{
+      method:'POST',
+      headers:getHeaders(),
+      body:JSON.stringify({transcript,scenario:rpCharacter,history:rpHistory.slice(0,-1)}),
+    });
+    const rpData=await rpRes.json();
+    if(!rpRes.ok) throw new Error(rpData.error||'Roleplay error');
+
+    document.getElementById('avatar-typing').classList.remove('visible');
+    showSpeechBubble(rpData.reply);
+    rpHistory.push({role:'model',text:rpData.reply});
+
+    if(rpData.audioBase64){
+      document.getElementById('rp-status').textContent='Character speaking…';
+      playBase64Audio(rpData.audioBase64,
+        ()=>{
+          stopAvatarSpeaking();
+          setRpMicState('idle');
+          document.getElementById('rp-status').textContent='Your turn — press mic';
+        },
+        ()=>startAvatarSpeaking()
+      );
+    } else {
+      setRpMicState('idle');
+      document.getElementById('rp-status').textContent='Your turn — press mic';
+    }
+  }catch(err){
+    document.getElementById('avatar-typing').classList.remove('visible');
+    showToast(err.message,'error');
+    setRpMicState('idle');
+    document.getElementById('rp-status').textContent='Press mic to speak';
+  }
+}
+
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+let rpAudioBase64=null;
+let rpAudioObj=null;
+let lastRpScorePayload=null;
+
+async function endRoleplay(){
+  const studentTurns=rpHistory.filter(h=>h.role==='user').map(h=>h.text).join(' ');
+  if(!studentTurns){resetRoleplay();return;}
+
+  const evalSection=document.getElementById('rp-eval-section');
+  evalSection.style.display='block';
+  document.getElementById('rp-eval-loading').style.display='block';
+  document.getElementById('rp-eval-content').style.display='none';
+  evalSection.scrollIntoView({behavior:'smooth',block:'start'});
+
+  const{pronScore,gramScore,fluScore,vocabScore,badWords,okWords}=scoreTranscript(studentTurns,'');
+
+  try{
+    const res=await fetch(`${BACKEND}/api/score`,{
+      method:'POST',
+      headers:getHeaders(),
+      body:JSON.stringify({transcript:studentTurns,target:'',pronScore,gramScore,fluScore,vocabScore,badWords,okWords,ttsLang:currentRpTtsLang}),
+    });
+    const data=await res.json();
+    if(!res.ok) throw new Error(data.error||'Evaluation failed');
+    rpAudioBase64=data.audioBase64||null;
+    lastRpScorePayload={transcript:studentTurns,target:'',pronScore,gramScore,fluScore,vocabScore,badWords,okWords};
+    renderRoleplayEval(data.feedback,{pronScore,gramScore,fluScore,vocabScore});
+  }catch(err){
+    showToast(err.message,'error');
+    document.getElementById('rp-eval-loading').style.display='none';
+  }
+}
+
+function renderRoleplayEval(feedback,{pronScore,gramScore,fluScore,vocabScore}){
+  document.getElementById('rp-eval-loading').style.display='none';
+  document.getElementById('rp-eval-content').style.display='block';
+
+  const overall=Math.round((pronScore+gramScore+fluScore+vocabScore)/4);
+  const rings=[
+    {label:'Overall',score:overall,color:'#ff9933'},
+    {label:'Pronunciation',score:pronScore,color:'#0ea5e9'},
+    {label:'Grammar',score:gramScore,color:'#8b5cf6'},
+    {label:'Fluency',score:fluScore,color:'#f43f5e'},
+  ];
+  const circ=2*Math.PI*28;
+  document.getElementById('rp-score-rings').innerHTML=rings.map(r=>{
+    const offset=circ*(1-r.score/100);
+    return`<div class="score-ring">
+      <svg width="72" height="72" viewBox="0 0 72 72">
+        <circle cx="36" cy="36" r="28" fill="none" stroke="var(--bg3)" stroke-width="6"/>
+        <circle class="ring-fill" cx="36" cy="36" r="28" fill="none" stroke="${r.color}" stroke-width="6"
+          stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+          data-offset="${offset}" transform="rotate(-90 36 36)"/>
+      </svg>
+      <div class="ring-value" style="color:${r.color}">${r.score}</div>
+      <div class="ring-label">${r.label}</div>
+    </div>`;
+  }).join('');
+
+  const bars=[
+    {name:'Pronunciation',score:pronScore,color:'#0ea5e9'},
+    {name:'Grammar',score:gramScore,color:'#8b5cf6'},
+    {name:'Fluency',score:fluScore,color:'#f43f5e'},
+    {name:'Vocabulary',score:vocabScore,color:'#f59e0b'},
+  ];
+  document.getElementById('rp-skill-bars').innerHTML=bars.map(s=>`
+    <div class="skill-row">
+      <div class="skill-name">${s.name}</div>
+      <div class="skill-track"><div class="skill-fill" data-score="${s.score}" style="background:${s.color}"></div></div>
+      <div class="skill-pct">${s.score}%</div>
+    </div>`).join('');
+
+  document.getElementById('rp-feedback-summary').textContent=feedback.summary||'';
+  document.getElementById('rp-feedback-strengths').innerHTML=(feedback.strengths||[]).map(s=>`<li>${escHtml(s)}</li>`).join('');
+  document.getElementById('rp-feedback-improvements').innerHTML=(feedback.improvements||[]).map(s=>`<li>${escHtml(s)}</li>`).join('');
+  document.getElementById('rp-feedback-encouragement').textContent=feedback.encouragement||'';
+  document.getElementById('rp-listen-btn').style.display=rpAudioBase64?'inline-flex':'none';
+
+  requestAnimationFrame(()=>{
+    setTimeout(()=>{
+      document.querySelectorAll('#rp-score-rings .ring-fill').forEach(el=>{el.style.strokeDashoffset=el.dataset.offset;});
+      document.querySelectorAll('#rp-skill-bars .skill-fill').forEach(el=>{el.style.width=el.dataset.score+'%';});
+    },50);
+  });
+}
+
+function playRpAudio(){
+  if(!rpAudioBase64) return;
+  const btn=document.getElementById('rp-listen-btn');
+  if(rpAudioObj){rpAudioObj.pause();rpAudioObj=null;}
+  const bytes=atob(rpAudioBase64);
+  const arr=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob=new Blob([arr],{type:'audio/wav'});
+  rpAudioObj=new Audio(URL.createObjectURL(blob));
+  rpAudioObj.onended=()=>{btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 सुनें — Listen in Hindi';btn.classList.remove('playing');};
+  rpAudioObj.play();
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Playing…';
+  btn.classList.add('playing');
+}
+
+function resetRoleplayFull(){
+  rpAudioBase64=null;
+  stopAvatarSpeaking();
+  document.getElementById('rp-eval-section').style.display='none';
+  resetRoleplay();
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function showLoading(show){
+  document.getElementById('loading').classList.toggle('visible',show);
+  document.getElementById('analyze-btn').disabled=show;
+}
+function setLoadingText(t){document.getElementById('loading-text').textContent=t;}
+
+let toastTimer=null;
+function showToast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast '+(type||'');
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+switchMode('score');
+</script>
+</body>
+</html>

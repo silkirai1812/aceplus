@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: aceplus-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://aceplus-frontend.onrender.com
+      - key: PORT
+        value: 10000
+
+  - type: web
+    name: aceplus-frontend
+    runtime: static
+    rootDir: frontend/public
+    staticPublishPath: .
+    buildCommand: "sed -i 's|%%BACKEND_URL%%|'$BACKEND_URL'|g' index.html"
+    envVars:
+      - key: BACKEND_URL
+        sync: false
