@@ -137,27 +137,94 @@ app.post('/api/score', async (req, res) => {
 
     const overall = Math.round((pronScore + gramScore + fluScore + vocabScore) / 4);
 
-    const userPrompt = `
-Target sentence: "${target || '(free speech)'}"
-Student said: "${transcript}"
+//     const userPrompt = `
+// Target sentence: "${target || '(free speech)'}"
+// Student said: "${transcript}"
 
-Scores (0-100):
-- Pronunciation: ${pronScore}
+// Scores (0-100):
+// - Pronunciation: ${pronScore}
+// - Grammar: ${gramScore}
+// - Fluency: ${fluScore}
+// - Vocabulary: ${vocabScore}
+// - Overall: ${overall}
+
+// Mispronounced words: ${badWords?.length ? badWords.join(', ') : 'none'}
+// Acceptable Indian variants used: ${okWords?.length ? okWords.join(', ') : 'none'}
+
+// Respond with ONLY valid JSON (no markdown):
+// {
+//   "summary": "2-3 sentence overall assessment in English",
+//   "strengths": ["specific strength 1 in English", "specific strength 2 in English"],
+//   "improvements": ["specific improvement 1 in English", "specific improvement 2 in English"],
+//   "encouragement": "one warm closing sentence in English",
+//   "spoken_summary": "2-3 warm encouraging sentences written in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only (e.g. आप बहुत अच्छा कर रहे हो! अंग्रेज़ी में और अभ्यास करते रहो!)' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only (e.g. তুমি খুব ভালো করছ! ইংরেজিতে আরো অনুশীলন করতে থাকো!)' : 'clear, warm English (e.g. Great effort! Keep practising your English every day!)'} to be read aloud to the student"
+// }`;
+
+// Analyse word-by-word differences between target and transcript
+const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+
+// Find missing words (in target but not spoken)
+const missingWords = targetWords.filter(w => !spokenWords.includes(w));
+
+// Find extra words (spoken but not in target) — catches stammers, fillers
+const extraWords = spokenWords.filter(w => !targetWords.includes(w));
+
+// Find filler words
+const FILLERS = ['um','uh','er','ah','like','basically','actually','so','you know'];
+const fillersUsed = spokenWords.filter(w => FILLERS.includes(w));
+
+// Word count comparison
+const wordCountDiff = spokenWords.length - targetWords.length;
+const wordCountNote = target
+  ? wordCountDiff < -3 ? `Student spoke ${Math.abs(wordCountDiff)} fewer words than expected — response too short`
+  : wordCountDiff > 5 ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
+  : 'Word count is appropriate'
+  : `Student spoke ${spokenWords.length} words`;
+
+// Sentence structure check — detect repetitions
+const words = spokenWords;
+const repetitions = [];
+for (let i = 0; i < words.length - 1; i++) {
+  if (words[i] === words[i+1]) repetitions.push(words[i]);
+}
+
+const userPrompt = `
+You are evaluating a student's spoken English response.
+
+TARGET (what student was supposed to say): "${target || '(free speech — no fixed target)'}"
+STUDENT ACTUALLY SAID: "${transcript}"
+
+SCORES (0-100):
+- Pronunciation: ${pronScore} ${pronScore === 100 ? '(note: pronunciation scoring is basic — focus on transcript analysis)' : ''}
 - Grammar: ${gramScore}
 - Fluency: ${fluScore}
 - Vocabulary: ${vocabScore}
 - Overall: ${overall}
 
-Mispronounced words: ${badWords?.length ? badWords.join(', ') : 'none'}
-Acceptable Indian variants used: ${okWords?.length ? okWords.join(', ') : 'none'}
+DETAILED ANALYSIS:
+- Words in target but missing from response: ${missingWords.length ? missingWords.join(', ') : 'none'}
+- Extra/unexpected words spoken: ${extraWords.length ? extraWords.join(', ') : 'none'}
+- Filler words used: ${fillersUsed.length ? fillersUsed.join(', ') : 'none'}
+- Repeated words (stammers): ${repetitions.length ? repetitions.join(', ') : 'none'}
+- ${wordCountNote}
+- Mispronounced words flagged: ${badWords?.length ? badWords.join(', ') : 'none detected by basic scorer'}
+
+INSTRUCTIONS:
+- Be specific — mention actual words from the transcript, not generic observations
+- If fluency score is below 50, explain exactly why (too short? too slow? fillers? repetitions?)
+- If there are missing words from target, mention them by name
+- If student stammered or repeated words, call it out specifically
+- Do NOT say "pronunciation was excellent" if the transcript shows broken sentence structure
+- For young Indian students — be warm but honest
 
 Respond with ONLY valid JSON (no markdown):
 {
-  "summary": "2-3 sentence overall assessment in English",
-  "strengths": ["specific strength 1 in English", "specific strength 2 in English"],
-  "improvements": ["specific improvement 1 in English", "specific improvement 2 in English"],
-  "encouragement": "one warm closing sentence in English",
-  "spoken_summary": "2-3 warm encouraging sentences written in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only (e.g. आप बहुत अच्छा कर रहे हो! अंग्रेज़ी में और अभ्यास करते रहो!)' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only (e.g. তুমি খুব ভালো করছ! ইংরেজিতে আরো অনুশীলন করতে থাকো!)' : 'clear, warm English (e.g. Great effort! Keep practising your English every day!)'} to be read aloud to the student"
+  "summary": "2-3 sentences referencing specific things the student said or missed",
+  "strengths": ["specific strength with example from their actual words"],
+  "improvements": ["specific issue with exact word or phrase from transcript as example"],
+  "encouragement": "one warm closing sentence",
+  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only' : 'clear warm English'} to be read aloud"
 }`;
 
     const groqRes = await fetch(GROQ_URL, {
