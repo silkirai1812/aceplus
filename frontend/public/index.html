@@ -830,40 +830,99 @@ function stopWaveAnim(){
 }
 
 // ─── SCORING ─────────────────────────────────────────────────────────────────
-function scoreTranscript(transcript,target){
-  const words=transcript.toLowerCase().split(/\s+/).filter(Boolean);
-  const targetWords=target?target.toLowerCase().split(/\s+/).filter(Boolean):[];
+// function scoreTranscript(transcript,target){
+//   const words=transcript.toLowerCase().split(/\s+/).filter(Boolean);
+//   const targetWords=target?target.toLowerCase().split(/\s+/).filter(Boolean):[];
 
-  let badWords=[],okWords=[],correctWords=[];
-  words.forEach(w=>{
-    const clean=w.replace(/[^a-z']/g,'');
-    if(KNOWN_ERRORS[clean]){badWords.push(clean);}
-    else if(INDIAN_VARIANTS.has(clean)){okWords.push(clean);}
-    else{correctWords.push(clean);}
+//   let badWords=[],okWords=[],correctWords=[];
+//   words.forEach(w=>{
+//     const clean=w.replace(/[^a-z']/g,'');
+//     if(KNOWN_ERRORS[clean]){badWords.push(clean);}
+//     else if(INDIAN_VARIANTS.has(clean)){okWords.push(clean);}
+//     else{correctWords.push(clean);}
+//   });
+
+//   // Pronunciation: ratio of clean words, penalise bad
+//   const pronBase=words.length>0?(correctWords.length+okWords.length)/words.length:0.8;
+//   const pronScore=Math.round(Math.min(100,pronBase*100-(badWords.length*5)));
+
+//   // Grammar: detect present-continuous overuse
+//   const gramPenalty=(transcript.match(/\b(am|is|are)\s+(having|knowing|wanting|understanding|seeing|hearing)\b/gi)||[]).length*10;
+//   const gramScore=Math.max(30,Math.min(100,88-gramPenalty));
+
+//   // Fluency: word count vs target (or vs ideal range)
+//   let fluScore=80;
+//   if(targetWords.length>0){
+//     const ratio=Math.min(words.length/targetWords.length,targetWords.length/words.length);
+//     fluScore=Math.round(ratio*100);
+//   } else {
+//     fluScore=words.length>=10?Math.min(100,70+(words.length-10)*1.5):Math.max(30,words.length*7);
+//   }
+
+//   // Vocab: lexical diversity
+//   const unique=new Set(words).size;
+//   const vocabScore=words.length>0?Math.round(Math.min(100,(unique/words.length)*120)):50;
+
+//   return{pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words};
+// }
+
+function scoreTranscript(transcript, target) {
+  const words = transcript.toLowerCase().split(/\s+/).filter(Boolean);
+  const targetWords = target ? target.toLowerCase().split(/\s+/).filter(Boolean) : [];
+
+  // --- PRONUNCIATION ---
+  // Check against expanded error list + penalise non-English words
+  let badWords = [], okWords = [], correctWords = [];
+  const HINDI_WORDS = new Set(['mera','meri','hai','hain','aur','nahi','toh','bas','yeh','woh','kya','tha','thi']);
+  words.forEach(w => {
+    const clean = w.replace(/[^a-z']/g, '');
+    if (KNOWN_ERRORS[clean]) badWords.push(clean);
+    else if (HINDI_WORDS.has(clean)) badWords.push(clean); // penalise Hindi words
+    else if (INDIAN_VARIANTS.has(clean)) okWords.push(clean);
+    else correctWords.push(clean);
   });
+  const pronScore = Math.round(Math.max(30, Math.min(100,
+    ((correctWords.length + okWords.length) / Math.max(words.length, 1)) * 100 - (badWords.length * 8)
+  )));
 
-  // Pronunciation: ratio of clean words, penalise bad
-  const pronBase=words.length>0?(correctWords.length+okWords.length)/words.length:0.8;
-  const pronScore=Math.round(Math.min(100,pronBase*100-(badWords.length*5)));
+  // --- GRAMMAR ---
+  let gramPenalty = 0;
+  // Present continuous overuse
+  gramPenalty += (transcript.match(/\b(am|is|are)\s+(having|knowing|wanting|understanding|seeing|hearing|liking|loving)\b/gi) || []).length * 12;
+  // Double subjects: "I myself I"
+  gramPenalty += (transcript.match(/\b(i)\s+\w+\s+(i)\b/gi) || []).length * 10;
+  // Repetitions: same word twice in a row
+  const repMatches = transcript.match(/\b(\w+)\s+\1\b/gi) || [];
+  gramPenalty += repMatches.length * 8;
+  // Missing subject-verb agreement
+  gramPenalty += (transcript.match(/\bhe\s+(have|go|come|do|make)\b/gi) || []).length * 10;
+  gramPenalty += (transcript.match(/\bshe\s+(have|go|come|do|make)\b/gi) || []).length * 10;
+  const gramScore = Math.max(30, Math.min(100, 90 - gramPenalty));
 
-  // Grammar: detect present-continuous overuse
-  const gramPenalty=(transcript.match(/\b(am|is|are)\s+(having|knowing|wanting|understanding|seeing|hearing)\b/gi)||[]).length*10;
-  const gramScore=Math.max(30,Math.min(100,88-gramPenalty));
-
-  // Fluency: word count vs target (or vs ideal range)
-  let fluScore=80;
-  if(targetWords.length>0){
-    const ratio=Math.min(words.length/targetWords.length,targetWords.length/words.length);
-    fluScore=Math.round(ratio*100);
+  // --- FLUENCY ---
+  let fluScore = 80;
+  if (targetWords.length > 0) {
+    const ratio = Math.min(words.length / targetWords.length, targetWords.length / words.length);
+    fluScore = Math.round(ratio * 100);
   } else {
-    fluScore=words.length>=10?Math.min(100,70+(words.length-10)*1.5):Math.max(30,words.length*7);
+    fluScore = words.length >= 15 ? Math.min(100, 65 + (words.length - 15) * 1.2)
+             : words.length >= 8  ? Math.round(words.length * 5.5)
+             : Math.max(20, words.length * 4);
   }
+  // Penalise repetitions in fluency too
+  fluScore = Math.max(20, fluScore - (repMatches.length * 10));
 
-  // Vocab: lexical diversity
-  const unique=new Set(words).size;
-  const vocabScore=words.length>0?Math.round(Math.min(100,(unique/words.length)*120)):50;
+  // --- VOCABULARY ---
+  const uniqueWords = new Set(words.filter(w => w.length > 3)); // ignore tiny words
+  const goodWords = ['pursuing', 'currently', 'internship', 'experience', 'passionate',
+    'developing', 'learning', 'project', 'research', 'technology', 'engineering',
+    'mathematics', 'science', 'favourite', 'interested', 'studying', 'working'];
+  const goodCount = words.filter(w => goodWords.includes(w.replace(/[^a-z]/g, ''))).length;
+  const vocabScore = Math.round(Math.min(100,
+    (uniqueWords.size / Math.max(words.length, 1)) * 100 + (goodCount * 5)
+  ));
 
-  return{pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words};
+  return { pronScore, gramScore, fluScore, vocabScore, badWords, okWords, words };
 }
 
 async function analyzeScore(){
