@@ -205,9 +205,48 @@ app.post('/api/score', async (req, res) => {
     const {
       transcript, target, pronScore, gramScore, fluScore, vocabScore,
       badWords, okWords, ttsLang = 'hi-IN',
-      audioBase64: clientAudioBase64, // optional — base64 audio from frontend
-      audioMime,                      // optional — mime type of audio
+      audioBase64: clientAudioBase64,
+      audioMime,
+      forceLang,
     } = req.body;
+
+    // ── FAST PATH: language switch only — just regenerate spoken_summary in new language ──
+if (forceLang) {
+  const langPrompt = `Write ONLY 2-3 warm encouraging sentences in ${
+    ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only — example: आपने बहुत अच्छा बोला! अंग्रेज़ी में और अभ्यास करते रहो!'
+    : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only — example: তুমি খুব সুন্দরভাবে কথা বলেছ! ইংরেজিতে আরও অনুশীলন করতে থাকো!'
+    : 'clear warm English — example: Great effort! Keep practicing your English every day!'
+  } to be read aloud to a student who just practiced spoken English. Be warm and encouraging. Write ONLY the sentences, nothing else.`;
+
+  const groqKey = getGroqKey(req);
+  const sarvamKey = getSarvamKey(req);
+
+  const groqRes = await fetch(GROQ_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${groqKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: langPrompt }],
+      temperature: 0.7,
+      max_tokens: 200,
+    }),
+  });
+
+  const groqData = await groqRes.json();
+  const spokenText = groqData.choices?.[0]?.message?.content?.trim() || '';
+
+  let audioBase64 = null;
+  try {
+    audioBase64 = await sarvamTTS(spokenText, sarvamKey, ttsLang);
+  } catch(e) {
+    console.warn('TTS failed on lang switch:', e.message);
+  }
+
+  return res.json({ feedback: null, audioBase64, spokenText, speechaceData: null });
+}
 
     if (!transcript) return res.status(400).json({ error: 'transcript required' });
     const groqKey = getGroqKey(req);
