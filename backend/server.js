@@ -30,24 +30,24 @@ app.use(express.json({ limit: '10mb' }));
 // ─── KEY HELPER ──────────────────────────────────────────────────────────────
 // Keys can come from env vars (server) OR request headers (client-side entry)
 function getSarvamKey(req) { return process.env.SARVAM_API_KEY || req.headers['x-sarvam-key'] || ''; }
-function getGroqKey(req)   { return process.env.GROQ_API_KEY   || req.headers['x-groq-key']   || ''; }
+function getGroqKey(req) { return process.env.GROQ_API_KEY || req.headers['x-groq-key'] || ''; }
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const SARVAM_STT_URL  = 'https://api.sarvam.ai/speech-to-text';
-const SARVAM_TTS_URL  = 'https://api.sarvam.ai/text-to-speech';
-const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL      = 'llama-3.3-70b-versatile';
-const SPEECHACE_URL = 'https://api.speechace.co/api/scoring/text/v9/json';
+const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
+const SARVAM_TTS_URL = 'https://api.sarvam.ai/text-to-speech';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const SPEECHACE_URL = 'https://api5.speechace.com/api/scoring/text/v9/json';
 
 // ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
 const HINDI_MARKERS = new Set([
-  'mera','meri','tera','teri','aap','tum','main','hum','yeh','woh','kya',
-  'hai','hain','tha','thi','the','ka','ki','ke','se','ko','mein','par',
-  'aur','ya','nahi','haan','kab','kahan','kaisa','kyun','achha','bahut',
-  'bilkul','zaroor','phir','abhi','kal','aaj','naam','ghar','paani',
-  'khana','dost','bhai','behen','matlab','thoda','zyada','sirf','bas',
-  'toh','lekin','kyunki','apna','apni','unka','unki','tumhara','hamara',
-  'isko','usko','inhe','unhe','yahan','wahan','idhar','udhar',
+  'mera', 'meri', 'tera', 'teri', 'aap', 'tum', 'main', 'hum', 'yeh', 'woh', 'kya',
+  'hai', 'hain', 'tha', 'thi', 'the', 'ka', 'ki', 'ke', 'se', 'ko', 'mein', 'par',
+  'aur', 'ya', 'nahi', 'haan', 'kab', 'kahan', 'kaisa', 'kyun', 'achha', 'bahut',
+  'bilkul', 'zaroor', 'phir', 'abhi', 'kal', 'aaj', 'naam', 'ghar', 'paani',
+  'khana', 'dost', 'bhai', 'behen', 'matlab', 'thoda', 'zyada', 'sirf', 'bas',
+  'toh', 'lekin', 'kyunki', 'apna', 'apni', 'unka', 'unki', 'tumhara', 'hamara',
+  'isko', 'usko', 'inhe', 'unhe', 'yahan', 'wahan', 'idhar', 'udhar',
 ]);
 
 function detectNonEnglish(transcript) {
@@ -174,8 +174,8 @@ app.post('/api/speechace-score', upload.single('audio'), async (req, res) => {
     })) || [];
 
     const overall = data.text_score?.speechace_score ?? null;
-    const ielts   = data.text_score?.ielts_score ?? null;
-    const cefr    = data.text_score?.cefr_score ?? null;
+    const ielts = data.text_score?.ielts_score ?? null;
+    const cefr = data.text_score?.cefr_score ?? null;
     const fluency = data.text_score?.fluency ?? null;
 
     res.json({
@@ -204,36 +204,36 @@ app.post('/api/score', async (req, res) => {
 
     const overall = Math.round((pronScore + gramScore + fluScore + vocabScore) / 4);
 
-// Analyse word-by-word differences between target and transcript
-const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
-const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+    // Analyse word-by-word differences between target and transcript
+    const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
+    const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
 
-// Find missing words (in target but not spoken)
-const missingWords = targetWords.filter(w => !spokenWords.includes(w));
+    // Find missing words (in target but not spoken)
+    const missingWords = targetWords.filter(w => !spokenWords.includes(w));
 
-// Find extra words (spoken but not in target) — catches stammers, fillers
-const extraWords = spokenWords.filter(w => !targetWords.includes(w));
+    // Find extra words (spoken but not in target) — catches stammers, fillers
+    const extraWords = spokenWords.filter(w => !targetWords.includes(w));
 
-// Find filler words
-const FILLERS = ['um','uh','er','ah','like','basically','actually','so','you know'];
-const fillersUsed = spokenWords.filter(w => FILLERS.includes(w));
+    // Find filler words
+    const FILLERS = ['um', 'uh', 'er', 'ah', 'like', 'basically', 'actually', 'so', 'you know'];
+    const fillersUsed = spokenWords.filter(w => FILLERS.includes(w));
 
-// Word count comparison
-const wordCountDiff = spokenWords.length - targetWords.length;
-const wordCountNote = target
-  ? wordCountDiff < -3 ? `Student spoke ${Math.abs(wordCountDiff)} fewer words than expected — response too short`
-  : wordCountDiff > 5 ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
-  : 'Word count is appropriate'
-  : `Student spoke ${spokenWords.length} words`;
+    // Word count comparison
+    const wordCountDiff = spokenWords.length - targetWords.length;
+    const wordCountNote = target
+      ? wordCountDiff < -3 ? `Student spoke ${Math.abs(wordCountDiff)} fewer words than expected — response too short`
+        : wordCountDiff > 5 ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
+          : 'Word count is appropriate'
+      : `Student spoke ${spokenWords.length} words`;
 
-// Sentence structure check — detect repetitions
-const words = spokenWords;
-const repetitions = [];
-for (let i = 0; i < words.length - 1; i++) {
-  if (words[i] === words[i+1]) repetitions.push(words[i]);
-}
+    // Sentence structure check — detect repetitions
+    const words = spokenWords;
+    const repetitions = [];
+    for (let i = 0; i < words.length - 1; i++) {
+      if (words[i] === words[i + 1]) repetitions.push(words[i]);
+    }
 
-const userPrompt = `
+    const userPrompt = `
 You are evaluating a student's spoken English response.
 
 TARGET (what student was supposed to say): "${target || '(free speech — no fixed target)'}"
@@ -426,7 +426,7 @@ Be warm, patient, and encouraging. Do not break character. Do not add stage dire
 // ─── GET /api/health ──────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   const sarvam = !!process.env.SARVAM_API_KEY;
-  const groq   = !!process.env.GROQ_API_KEY;
+  const groq = !!process.env.GROQ_API_KEY;
   res.json({
     status: sarvam && groq ? 'ok' : 'degraded',
     sarvam,
