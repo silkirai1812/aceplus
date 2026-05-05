@@ -29,24 +29,24 @@ app.use(express.json({ limit: '10mb' }));
 
 // ─── KEY HELPERS ─────────────────────────────────────────────────────────────
 function getSarvamKey(req) { return process.env.SARVAM_API_KEY || req.headers['x-sarvam-key'] || ''; }
-function getGroqKey(req)   { return process.env.GROQ_API_KEY   || req.headers['x-groq-key']   || ''; }
+function getGroqKey(req) { return process.env.GROQ_API_KEY || req.headers['x-groq-key'] || ''; }
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const SARVAM_STT_URL  = 'https://api.sarvam.ai/speech-to-text';
-const SARVAM_TTS_URL  = 'https://api.sarvam.ai/text-to-speech';
-const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL      = 'llama-3.3-70b-versatile';
-const SPEECHACE_URL   = 'https://api5.speechace.com/api/scoring/text/v9/json';
+const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
+const SARVAM_TTS_URL = 'https://api.sarvam.ai/text-to-speech';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const SPEECHACE_URL = 'https://api5.speechace.com/api/scoring/text/v9/json';
 
 // ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
 const HINDI_MARKERS = new Set([
-  'mera','meri','tera','teri','aap','tum','main','hum','yeh','woh','kya',
-  'hai','hain','tha','thi','the','ka','ki','ke','se','ko','mein','par',
-  'aur','ya','nahi','haan','kab','kahan','kaisa','kyun','achha','bahut',
-  'bilkul','zaroor','phir','abhi','kal','aaj','naam','ghar','paani',
-  'khana','dost','bhai','behen','matlab','thoda','zyada','sirf','bas',
-  'toh','lekin','kyunki','apna','apni','unka','unki','tumhara','hamara',
-  'isko','usko','inhe','unhe','yahan','wahan','idhar','udhar',
+  'mera', 'meri', 'tera', 'teri', 'aap', 'tum', 'main', 'hum', 'yeh', 'woh', 'kya',
+  'hai', 'hain', 'tha', 'thi', 'the', 'ka', 'ki', 'ke', 'se', 'ko', 'mein', 'par',
+  'aur', 'ya', 'nahi', 'haan', 'kab', 'kahan', 'kaisa', 'kyun', 'achha', 'bahut',
+  'bilkul', 'zaroor', 'phir', 'abhi', 'kal', 'aaj', 'naam', 'ghar', 'paani',
+  'khana', 'dost', 'bhai', 'behen', 'matlab', 'thoda', 'zyada', 'sirf', 'bas',
+  'toh', 'lekin', 'kyunki', 'apna', 'apni', 'unka', 'unki', 'tumhara', 'hamara',
+  'isko', 'usko', 'inhe', 'unhe', 'yahan', 'wahan', 'idhar', 'udhar',
 ]);
 
 function detectNonEnglish(transcript) {
@@ -123,7 +123,7 @@ async function scoreSpeechAce(audioBuffer, mimeType, target) {
       // Find the weakest phoneme in this word
       weakestPhone: w.phone_score_list?.reduce((worst, p) =>
         (!worst || p.quality_score < worst.quality_score) ? p : worst
-      , null),
+        , null),
     })) || [];
 
     const weakWords = wordScores.filter(w => w.score < 80);
@@ -131,17 +131,17 @@ async function scoreSpeechAce(audioBuffer, mimeType, target) {
 
     return {
       pronunciationScore: data.text_score?.speechace_score?.pronunciation ?? null,
-      fluencyScore:       data.text_score?.speechace_score?.fluency ?? null,
-      ielts:              data.text_score?.ielts_score ?? null,
-      cefr:               data.text_score?.cefr_score ?? null,
+      fluencyScore: data.text_score?.speechace_score?.fluency ?? null,
+      ielts: data.text_score?.ielts_score ?? null,
+      cefr: data.text_score?.cefr_score ?? null,
       wordScores,
       weakWords,   // words that need improvement
       goodWords,   // words pronounced well
       fluencyDetail: {
-        speechRate:    data.text_score?.fluency?.overall_metrics?.speech_rate ?? null,
-        pauseCount:    data.text_score?.fluency?.overall_metrics?.all_pause_count ?? null,
+        speechRate: data.text_score?.fluency?.overall_metrics?.speech_rate ?? null,
+        pauseCount: data.text_score?.fluency?.overall_metrics?.all_pause_count ?? null,
         pauseDuration: data.text_score?.fluency?.overall_metrics?.all_pause_duration ?? null,
-        wordsPerMin:   data.text_score?.fluency?.overall_metrics?.word_correct_per_minute ?? null,
+        wordsPerMin: data.text_score?.fluency?.overall_metrics?.word_correct_per_minute ?? null,
       },
     };
   } catch (err) {
@@ -216,11 +216,14 @@ app.post('/api/score', async (req, res) => {
 
     // ── SPEECHACE SCORING (runs in parallel with prompt building) ────────────
     let saData = null;
-    const isCustomScenario = req.body.isCustom === true;
-    if (isCustomScenario && target && clientAudioBase64) {
+    if (target && clientAudioBase64) {
       // Only call SpeechAce in Scoring Mode where we have a target sentence
-      const audioBuffer = Buffer.from(clientAudioBase64, 'base64');
-      saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', target);
+      // Use transcript as target for free speech scenarios so SpeechAce scores pronunciation accurately
+      const speechaceTarget = (target && target.trim()) ? target : transcript;
+      if (clientAudioBase64 && speechaceTarget) {
+        const audioBuffer = Buffer.from(clientAudioBase64, 'base64');
+        saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', speechaceTarget);
+      }
     }
 
     // ── WORD-BY-WORD TRANSCRIPT ANALYSIS ────────────────────────────────────
@@ -228,16 +231,16 @@ app.post('/api/score', async (req, res) => {
     const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
 
     const missingWords = targetWords.filter(w => !spokenWords.includes(w));
-    const extraWords   = spokenWords.filter(w => !targetWords.includes(w));
+    const extraWords = spokenWords.filter(w => !targetWords.includes(w));
 
-    const FILLERS = ['um','uh','er','ah','like','basically','actually','so','you know'];
+    const FILLERS = ['um', 'uh', 'er', 'ah', 'like', 'basically', 'actually', 'so', 'you know'];
     const fillersUsed = spokenWords.filter(w => FILLERS.includes(w));
 
     const wordCountDiff = spokenWords.length - targetWords.length;
     const wordCountNote = target
       ? wordCountDiff < -3 ? `Student spoke ${Math.abs(wordCountDiff)} fewer words than expected — response too short`
-      : wordCountDiff > 5  ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
-      : 'Word count is appropriate'
+        : wordCountDiff > 5 ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
+          : 'Word count is appropriate'
       : `Student spoke ${spokenWords.length} words`;
 
     const repetitions = [];
@@ -368,12 +371,12 @@ Be honest — accurate feedback helps students improve more than empty praise.`,
       spokenText,
       speechaceData: saData ? {
         pronunciationScore: saData.pronunciationScore,
-        fluencyScore:       saData.fluencyScore,
-        ielts:              saData.ielts,
-        cefr:               saData.cefr,
-        wordScores:         saData.wordScores,
-        weakWords:          saData.weakWords,
-        fluencyDetail:      saData.fluencyDetail,
+        fluencyScore: saData.fluencyScore,
+        ielts: saData.ielts,
+        cefr: saData.cefr,
+        wordScores: saData.wordScores,
+        weakWords: saData.weakWords,
+        fluencyDetail: saData.fluencyDetail,
       } : null,
     });
 
@@ -487,8 +490,8 @@ Be warm, patient, and encouraging. Do not break character. Do not add stage dire
 
 // ─── GET /api/health ──────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
-  const sarvam    = !!process.env.SARVAM_API_KEY;
-  const groq      = !!process.env.GROQ_API_KEY;
+  const sarvam = !!process.env.SARVAM_API_KEY;
+  const groq = !!process.env.GROQ_API_KEY;
   const speechace = !!process.env.SPEECHACE_API_KEY;
   res.json({
     status: sarvam && groq ? 'ok' : 'degraded',

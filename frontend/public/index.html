@@ -973,7 +973,6 @@ function scoreTranscript(transcript, target) {
       ttsLang:currentTtsLang,
       audioBase64:audioBase64ForSA,
       audioMime,
-      isCustom: currentScenario === 'custom',
     }),
     });
     const data=await res.json();
