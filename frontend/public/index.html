@@ -1548,17 +1548,21 @@ const rings=[
   {label:'Grammar',score:gramScore,color:'#8b5cf6'},
   {label:'Fluency',score:displayFlu,color:'#f43f5e'},
 ];
-  const circ=2*Math.PI*28;
+  const circ=2*Math.PI*34;
   document.getElementById('rp-score-rings').innerHTML=rings.map(r=>{
     const offset=circ*(1-r.score/100);
     return`<div class="score-ring">
-      <svg width="72" height="72" viewBox="0 0 72 72">
-        <circle cx="36" cy="36" r="28" fill="none" stroke="var(--bg3)" stroke-width="6"/>
-        <circle class="ring-fill" cx="36" cy="36" r="28" fill="none" stroke="${r.color}" stroke-width="6"
-          stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
-          data-offset="${offset}"/>
-      </svg>
-      <div class="ring-value" style="color:${r.color}">${r.score}</div>
+      <div class="ring-wrap">
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="34"/>
+          <circle class="ring-fill" cx="40" cy="40" r="34"
+            stroke="${r.color}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${circ}"
+            data-offset="${offset}"/>
+        </svg>
+        <div class="ring-value" style="color:${r.color}">${r.score}</div>
+      </div>
       <div class="ring-label">${r.label}</div>
     </div>`;
   }).join('');
