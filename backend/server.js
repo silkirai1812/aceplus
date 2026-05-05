@@ -255,7 +255,7 @@ if (forceLang) {
 
     // ── SPEECHACE SCORING (runs in parallel with prompt building) ────────────
     let saData = null;
-    if (target && clientAudioBase64) {
+    if (clientAudioBase64) {
       // Only call SpeechAce in Scoring Mode where we have a target sentence
       // Use transcript as target for free speech scenarios so SpeechAce scores pronunciation accurately
       const speechaceTarget = (target && target.trim()) ? target : transcript;
