@@ -937,7 +937,7 @@ function scoreTranscript(transcript, target) {
   return { pronScore, gramScore, fluScore, vocabScore, badWords, okWords, words };
 }
 
-async function analyzeScore(){
+  async function analyzeScore(){
   if(!currentTranscript) return;
   const target=currentScenario==='custom'
     ?document.getElementById('target-sentence').value
@@ -948,11 +948,34 @@ async function analyzeScore(){
   showLoading(true);
   setLoadingText('Getting AI feedback…');
 
+  // Convert recorded audio to base64 to send to SpeechAce via backend
+  let audioBase64ForSA = null;
+  let audioMime = 'audio/webm';
+  try{
+    const audioBlob = new Blob(audioChunks, {type:'audio/webm'});
+    audioBase64ForSA = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(audioBlob);
+    });
+  }catch(e){
+    console.warn('Could not convert audio for SpeechAce:', e);
+  }
+
   try{
     const res=await fetch(`${BACKEND}/api/score`,{
       method:'POST',
       headers:getHeaders(),
-      body:JSON.stringify({transcript:currentTranscript,target,pronScore,gramScore,fluScore,vocabScore,badWords,okWords,ttsLang:currentTtsLang}),
+      body:JSON.stringify({
+        transcript:currentTranscript,
+        target,
+        pronScore,gramScore,fluScore,vocabScore,
+        badWords,okWords,
+        ttsLang:currentTtsLang,
+        audioBase64:audioBase64ForSA,
+        audioMime,
+      }),
     });
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Scoring failed');
@@ -1060,7 +1083,70 @@ function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords
     },50);
   });
 
+  // Render SpeechAce comparison panel
+  renderSpeechAcePanel(data.speechaceData);
   document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderSpeechAcePanel(saData){
+  // Remove old panel if exists
+  const old = document.getElementById('speechace-panel');
+  if(old) old.remove();
+
+  if(!saData) return; // SpeechAce not available, skip
+
+  const panel = document.createElement('div');
+  panel.id = 'speechace-panel';
+  panel.className = 'card';
+  panel.style.marginTop = '0';
+
+  // Color helper
+  const scoreColor = s => s >= 90 ? 'var(--green2)' : s >= 70 ? 'var(--amber)' : 'var(--rose)';
+  const cefr = saData.cefr || {};
+  const ielts = saData.ielts || {};
+  const fd = saData.fluencyDetail || {};
+
+  panel.innerHTML = `
+    <div class="card-title">🎯 SpeechAce Analysis</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--bg2);border-radius:var(--r);padding:14px;border:1.5px solid var(--border2);text-align:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:6px;font-family:'Montserrat',sans-serif">PRONUNCIATION</div>
+        <div style="font-size:32px;font-weight:800;color:${scoreColor(saData.pronunciationScore)};font-family:'JetBrains Mono',monospace">${saData.pronunciationScore}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">IELTS ${ielts.pronunciation ?? '—'}/9 · CEFR ${cefr.pronunciation ?? '—'}</div>
+      </div>
+      <div style="background:var(--bg2);border-radius:var(--r);padding:14px;border:1.5px solid var(--border2);text-align:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;margin-bottom:6px;font-family:'Montserrat',sans-serif">FLUENCY</div>
+        <div style="font-size:32px;font-weight:800;color:${scoreColor(saData.fluencyScore)};font-family:'JetBrains Mono',monospace">${saData.fluencyScore}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">IELTS ${ielts.fluency ?? '—'}/9 · CEFR ${cefr.fluency ?? '—'}</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap">
+      ${fd.wordsPerMin ? `<span>🗣 ${Math.round(fd.wordsPerMin)} words/min</span>` : ''}
+      ${fd.pauseCount != null ? `<span>⏸ ${fd.pauseCount} pause${fd.pauseCount !== 1 ? 's' : ''} (${fd.pauseDuration}s)</span>` : ''}
+    </div>
+
+    <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;font-family:'Montserrat',sans-serif">Word Scores</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      ${(saData.wordScores || []).map(w => `
+        <div style="padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600;
+          background:${w.score >= 90 ? 'rgba(22,163,74,0.1)' : w.score >= 70 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)'};
+          color:${w.score >= 90 ? 'var(--green2)' : w.score >= 70 ? '#d97706' : 'var(--rose)'};
+          border:1.5px solid ${w.score >= 90 ? 'rgba(22,163,74,0.25)' : w.score >= 70 ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)'}">
+          ${w.word} <span style="font-family:'JetBrains Mono',monospace;font-size:11px">${w.score}%</span>
+        </div>
+      `).join('')}
+    </div>
+    <div style="display:flex;gap:12px;font-size:11px;color:var(--muted);margin-top:4px">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green2);margin-right:4px"></span>90+</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d97706;margin-right:4px"></span>70–89</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--rose);margin-right:4px"></span>Below 70</span>
+    </div>
+  `;
+
+  // Insert after AI feedback card, before session history
+  const historyCard = document.getElementById('history-card');
+  historyCard.parentNode.insertBefore(panel, historyCard);
 }
 
 // ─── LANGUAGE PILLS ───────────────────────────────────────────────────────────
@@ -1508,7 +1594,7 @@ function playRpAudio(){
     btn.classList.remove('playing');
   };
   rpAudioObj.play();
-  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Pause';
   btn.classList.add('playing');
 }
 
