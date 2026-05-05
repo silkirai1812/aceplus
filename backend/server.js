@@ -265,7 +265,7 @@ Use transcript analysis below as the basis for pronunciation feedback.
     const userPrompt = `
 You are evaluating a student's spoken English response.
 
-TARGET (what student was supposed to say): "${target || '(free speech — no fixed target)'}"
+SCENARIO CONTEXT (what the student was asked to do — NOT a script they must follow word for word): "${target || '(free speech)'}"
 STUDENT ACTUALLY SAID: "${transcript}"
 
 FRONTEND SCORES (0-100):
@@ -276,20 +276,22 @@ FRONTEND SCORES (0-100):
 - Overall: ${overall}
 ${speechaceSection}
 TRANSCRIPT ANALYSIS:
-- Words in target but missing from response: ${missingWords.length ? missingWords.join(', ') : 'none'}
-- Extra/unexpected words spoken: ${extraWords.length ? extraWords.join(', ') : 'none'}
 - Filler words used: ${fillersUsed.length ? fillersUsed.join(', ') : 'none'}
 - Repeated words (stammers): ${repetitions.length ? repetitions.join(', ') : 'none'}
 - ${wordCountNote}
 - Mispronounced words (basic check): ${badWords?.length ? badWords.join(', ') : 'none'}
 
 INSTRUCTIONS:
-- If SpeechAce data is available, use it as the primary source for pronunciation feedback — it is more accurate than the frontend score
-- Mention specific weak words by name if SpeechAce flagged them
-- If fluency score is low, explain why using the pause count and speech rate data
-- Be specific — reference actual words from the transcript
-- For young Indian students — be warm but honest
-- Do NOT give generic praise if scores show real issues
+- Write as a warm human English teacher talking directly to the student — NOT as an AI giving a technical report
+- NEVER mention any numbers from scores in feedback text — no "47/100", no "score is 60", no "pronunciation score", no "vocabulary score", no "fluency score" — never quote any number from the scoring data
+- NEVER say "the prompt", "key words from the prompt", "the target sentence", "the scenario" — students don't know these exist
+- NEVER use technical words like "filler words", "transcript", "fluency score", "vocabulary score", "CEFR", "IELTS"
+- NEVER list specific words the student missed — the scenario context is just for your understanding, not a required script
+- If SpeechAce flagged a weak word, mention it naturally — say "try saying the word 'name' a little more clearly" not "word 'name' scored 47%"
+- If fluency is low, say it in simple terms — "try to speak a little faster and more smoothly" not "fluency score is 0 due to speech rate of 8 words/min"
+- If student stammered or repeated words, mention it like a teacher would — "I noticed you repeated yourself a couple of times, try to speak one thought at a time"
+- Feedback should sound like a teacher saying it out loud to a child — warm, encouraging, specific
+- For young Indian students — be specific about what to practice next
 
 Respond with ONLY valid JSON (no markdown):
 {

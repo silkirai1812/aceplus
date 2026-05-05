@@ -6,9 +6,7 @@
 <title>ACEplus — Spoken English Coach</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<!-- <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/> -->
-
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
 /* ── TOKENS ─────────────────────────────────────────────── */
 :root {
@@ -983,6 +981,7 @@ function scoreTranscript(transcript, target) {
     currentAudioBase64=data.audioBase64;
     lastScorePayload={transcript:currentTranscript,target,pronScore,gramScore,fluScore,vocabScore,badWords,okWords};
     renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback:data.feedback});
+    renderSpeechAcePanel(data.speechaceData);
     addHistory(currentTranscript,Math.round((pronScore+gramScore+fluScore+vocabScore)/4));
   }catch(err){
     showToast(err.message,'error');
@@ -1083,8 +1082,6 @@ function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords
     },50);
   });
 
-  // Render SpeechAce comparison panel
-  renderSpeechAcePanel(data.speechaceData);
   document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
