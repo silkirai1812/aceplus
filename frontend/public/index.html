@@ -1084,52 +1084,87 @@ const LISTEN_BTN_HTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="cur
 
 async function onLangChange(){
   if(!lastScorePayload) return;
-  // Stop playing audio immediately — do NOT auto-play new one
   if(currentAudio){currentAudio.pause();currentAudio=null;}
   const btn=document.getElementById('listen-btn');
   btn.innerHTML='⏳ Fetching audio…';
   btn.classList.remove('playing');
   btn.disabled=true;
   try{
-    const res=await fetch(`${BACKEND}/api/score`,{method:'POST',headers:getHeaders(),body:JSON.stringify({...lastScorePayload,ttsLang:currentTtsLang})});
+    // Force fresh call with correct ttsLang so Groq generates in correct language
+    const res=await fetch(`${BACKEND}/api/score`,{
+      method:'POST',
+      headers:getHeaders(),
+      body:JSON.stringify({
+        ...lastScorePayload,
+        ttsLang:currentTtsLang,
+        forceLang:true  // signal to backend this is a language switch
+      })
+    });
     const data=await res.json();
     if(data.audioBase64){
       currentAudioBase64=data.audioBase64;
+      // Reset audio object so fresh play starts from beginning
+      currentAudio=null;
       showToast('Audio ready — press Listen','success');
     }
   }catch(e){showToast('Could not update audio','error');}
   finally{
-    btn.innerHTML=LISTEN_BTN_HTML;
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
     btn.disabled=false;
   }
 }
+
 async function onRpLangChange(){
   if(!lastRpScorePayload) return;
-  // Stop playing audio immediately — do NOT auto-play new one
   if(rpAudioObj){rpAudioObj.pause();rpAudioObj=null;}
   const btn=document.getElementById('rp-listen-btn');
   btn.innerHTML='⏳ Fetching audio…';
   btn.classList.remove('playing');
   btn.disabled=true;
   try{
-    const res=await fetch(`${BACKEND}/api/score`,{method:'POST',headers:getHeaders(),body:JSON.stringify({...lastRpScorePayload,ttsLang:currentRpTtsLang})});
+    const res=await fetch(`${BACKEND}/api/score`,{
+      method:'POST',
+      headers:getHeaders(),
+      body:JSON.stringify({
+        ...lastRpScorePayload,
+        ttsLang:currentRpTtsLang,
+        forceLang:true
+      })
+    });
     const data=await res.json();
     if(data.audioBase64){
       rpAudioBase64=data.audioBase64;
+      rpAudioObj=null;
       showToast('Audio ready — press Listen','success');
     }
   }catch(e){showToast('Could not update audio','error');}
   finally{
-    btn.innerHTML=LISTEN_BTN_HTML;
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
     btn.disabled=false;
   }
 }
-
 // ─── AUDIO PLAYBACK ───────────────────────────────────────────────────────────
 function playAudio(){
   if(!currentAudioBase64) return;
   const btn=document.getElementById('listen-btn');
-  if(currentAudio){currentAudio.pause();currentAudio=null;}
+
+  // If already playing — PAUSE it
+  if(currentAudio && !currentAudio.paused){
+    currentAudio.pause();
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
+    btn.classList.remove('playing');
+    return;
+  }
+
+  // If paused midway — RESUME it
+  if(currentAudio && currentAudio.paused){
+    currentAudio.play();
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+    btn.classList.add('playing');
+    return;
+  }
+
+  // Fresh play
   const bytes=atob(currentAudioBase64);
   const arr=new Uint8Array(bytes.length);
   for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
@@ -1137,11 +1172,11 @@ function playAudio(){
   const url=URL.createObjectURL(blob);
   currentAudio=new Audio(url);
   currentAudio.onended=()=>{
-    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> Listen to feedback';
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
     btn.classList.remove('playing');
   };
   currentAudio.play();
-  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Playing…';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
   btn.classList.add('playing');
 }
 
@@ -1448,15 +1483,32 @@ function renderRoleplayEval(feedback,{pronScore,gramScore,fluScore,vocabScore}){
 function playRpAudio(){
   if(!rpAudioBase64) return;
   const btn=document.getElementById('rp-listen-btn');
-  if(rpAudioObj){rpAudioObj.pause();rpAudioObj=null;}
+
+  if(rpAudioObj && !rpAudioObj.paused){
+    rpAudioObj.pause();
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
+    btn.classList.remove('playing');
+    return;
+  }
+
+  if(rpAudioObj && rpAudioObj.paused){
+    rpAudioObj.play();
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+    btn.classList.add('playing');
+    return;
+  }
+
   const bytes=atob(rpAudioBase64);
   const arr=new Uint8Array(bytes.length);
   for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
   const blob=new Blob([arr],{type:'audio/wav'});
   rpAudioObj=new Audio(URL.createObjectURL(blob));
-  rpAudioObj.onended=()=>{btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 सुनें — Listen in Hindi';btn.classList.remove('playing');};
+  rpAudioObj.onended=()=>{
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg> 🔊 Listen to Feedback';
+    btn.classList.remove('playing');
+  };
   rpAudioObj.play();
-  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Playing…';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
   btn.classList.add('playing');
 }
 

@@ -236,40 +236,43 @@ app.post('/api/score', async (req, res) => {
     const userPrompt = `
 You are evaluating a student's spoken English response.
 
-SCENARIO CONTEXT (what the student was asked to do — NOT a script they must follow word for word): "${target || '(free speech)'}"
+SCENARIO CONTEXT (what the student was asked to do — this is a situation, NOT a script they must follow word for word): "${target || '(free speech)'}"
 STUDENT ACTUALLY SAID: "${transcript}"
 
-SCORES (0-100):
-- Pronunciation: ${pronScore} ${pronScore === 100 ? '(note: pronunciation scoring is basic — focus on transcript analysis)' : ''}
+FRONTEND SCORES (0-100):
+- Pronunciation: ${pronScore} (unreliable — use SpeechAce data below if available)
 - Grammar: ${gramScore}
 - Fluency: ${fluScore}
 - Vocabulary: ${vocabScore}
 - Overall: ${overall}
-
-DETAILED ANALYSIS:
+${speechaceSection}
+TRANSCRIPT ANALYSIS:
 - Filler words used: ${fillersUsed.length ? fillersUsed.join(', ') : 'none'}
 - Repeated words (stammers): ${repetitions.length ? repetitions.join(', ') : 'none'}
 - ${wordCountNote}
-- Mispronounced words flagged: ${badWords?.length ? badWords.join(', ') : 'none detected by basic scorer'}
+- Mispronounced words (basic check): ${badWords?.length ? badWords.join(', ') : 'none'}
 
 INSTRUCTIONS:
-- Write as a warm, human English teacher talking directly to the student — NOT as an AI giving a technical report
-- NEVER mention score numbers in the feedback text (no "your vocabulary score was 57")
+- Write as a warm human English teacher talking directly to the student — NOT as an AI giving a technical report
+- NEVER mention score numbers in feedback (no "your vocabulary score was 57")
 - NEVER say "the prompt", "key words from the prompt", "the target sentence" — students don't know these exist
 - NEVER use technical words like "filler words", "transcript", "fluency score", "vocabulary score"
-- Instead of "you used filler words like 'like'" say "try to speak without saying 'like' in between sentences"
-- Instead of "missing key words from the prompt" say "try to give more detail about your hobbies and favourite subjects"
-- If the student went off-topic, gently say what they could add — don't say what they missed from a template
-- Feedback should sound like a teacher saying it out loud to a child, not a report being generated
-- For young Indian students — be warm, encouraging, and specific about what to practice next
+- NEVER list specific words the student missed from the scenario context
+- The scenario context is just for your understanding of what situation the student was in — do not treat it as a required script
+- Instead of "you used filler words like 'like'" → say "try to speak without pausing to say 'like' in between your sentences"
+- Instead of "you missed key words" → say "try to give more detail about what you want" naturally
+- If student stammered or repeated words, mention it naturally like a teacher would
+- If fluency is low, say it in simple terms — "try to speak a little faster and more smoothly"
+- Feedback should sound like a teacher saying it out loud to a child, warm and encouraging
+- For young Indian students — be specific about what to practice next, not what they did wrong
 
 Respond with ONLY valid JSON (no markdown):
 {
-  "summary": "2-3 sentences referencing specific things the student said or missed",
-  "strengths": ["specific strength with example from their actual words"],
-  "improvements": ["specific issue with exact word or phrase from transcript as example"],
+  "summary": "2-3 sentences written like a teacher talking to the student directly",
+  "strengths": ["one specific thing they did well, described naturally"],
+  "improvements": ["one specific thing to practice, described like a teacher would say it"],
   "encouragement": "one warm closing sentence",
-  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only' : 'clear warm English'} to be read aloud"
+  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only — example: आपने बहुत अच्छा बोला! अंग्रेज़ी में और अभ्यास करते रहो, आप ज़रूर आगे बढ़ोगे!' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only — example: তুমি খুব সুন্দরভাবে কথা বলেছ! ইংরেজিতে আরও অনুশীলন করতে থাকো, তুমি অবশ্যই এগিয়ে যাবে!' : 'clear warm English — example: Great effort today! Keep practicing your English every day and you will improve.'} to be read aloud to the student — make sure the language matches exactly"
 }`;
 
     const groqRes = await fetch(GROQ_URL, {
