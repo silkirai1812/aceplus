@@ -137,29 +137,6 @@ app.post('/api/score', async (req, res) => {
 
     const overall = Math.round((pronScore + gramScore + fluScore + vocabScore) / 4);
 
-//     const userPrompt = `
-// Target sentence: "${target || '(free speech)'}"
-// Student said: "${transcript}"
-
-// Scores (0-100):
-// - Pronunciation: ${pronScore}
-// - Grammar: ${gramScore}
-// - Fluency: ${fluScore}
-// - Vocabulary: ${vocabScore}
-// - Overall: ${overall}
-
-// Mispronounced words: ${badWords?.length ? badWords.join(', ') : 'none'}
-// Acceptable Indian variants used: ${okWords?.length ? okWords.join(', ') : 'none'}
-
-// Respond with ONLY valid JSON (no markdown):
-// {
-//   "summary": "2-3 sentence overall assessment in English",
-//   "strengths": ["specific strength 1 in English", "specific strength 2 in English"],
-//   "improvements": ["specific improvement 1 in English", "specific improvement 2 in English"],
-//   "encouragement": "one warm closing sentence in English",
-//   "spoken_summary": "2-3 warm encouraging sentences written in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only (e.g. आप बहुत अच्छा कर रहे हो! अंग्रेज़ी में और अभ्यास करते रहो!)' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only (e.g. তুমি খুব ভালো করছ! ইংরেজিতে আরো অনুশীলন করতে থাকো!)' : 'clear, warm English (e.g. Great effort! Keep practising your English every day!)'} to be read aloud to the student"
-// }`;
-
 // Analyse word-by-word differences between target and transcript
 const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
 const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
