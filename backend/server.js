@@ -236,7 +236,7 @@ app.post('/api/score', async (req, res) => {
     const userPrompt = `
 You are evaluating a student's spoken English response.
 
-TARGET (what student was supposed to say): "${target || '(free speech — no fixed target)'}"
+SCENARIO CONTEXT (what the student was asked to do — NOT a script they must follow word for word): "${target || '(free speech)'}"
 STUDENT ACTUALLY SAID: "${transcript}"
 
 SCORES (0-100):
@@ -247,20 +247,21 @@ SCORES (0-100):
 - Overall: ${overall}
 
 DETAILED ANALYSIS:
-- Words in target but missing from response: ${missingWords.length ? missingWords.join(', ') : 'none'}
-- Extra/unexpected words spoken: ${extraWords.length ? extraWords.join(', ') : 'none'}
 - Filler words used: ${fillersUsed.length ? fillersUsed.join(', ') : 'none'}
 - Repeated words (stammers): ${repetitions.length ? repetitions.join(', ') : 'none'}
 - ${wordCountNote}
 - Mispronounced words flagged: ${badWords?.length ? badWords.join(', ') : 'none detected by basic scorer'}
 
 INSTRUCTIONS:
-- Be specific — mention actual words from the transcript, not generic observations
-- If fluency score is below 50, explain exactly why (too short? too slow? fillers? repetitions?)
-- If there are missing words from target, mention them by name
-- If student stammered or repeated words, call it out specifically
-- Do NOT say "pronunciation was excellent" if the transcript shows broken sentence structure
-- For young Indian students — be warm but honest
+- Write as a warm, human English teacher talking directly to the student — NOT as an AI giving a technical report
+- NEVER mention score numbers in the feedback text (no "your vocabulary score was 57")
+- NEVER say "the prompt", "key words from the prompt", "the target sentence" — students don't know these exist
+- NEVER use technical words like "filler words", "transcript", "fluency score", "vocabulary score"
+- Instead of "you used filler words like 'like'" say "try to speak without saying 'like' in between sentences"
+- Instead of "missing key words from the prompt" say "try to give more detail about your hobbies and favourite subjects"
+- If the student went off-topic, gently say what they could add — don't say what they missed from a template
+- Feedback should sound like a teacher saying it out loud to a child, not a report being generated
+- For young Indian students — be warm, encouraging, and specific about what to practice next
 
 Respond with ONLY valid JSON (no markdown):
 {
