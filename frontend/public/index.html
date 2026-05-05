@@ -401,7 +401,7 @@ a:hover{text-decoration:underline}
 
     <!-- Score rings + bars -->
     <div class="card">
-      <div class="card-title">Scores</div>
+      <div class="card-title">Speechace Scores</div>
       <div class="score-grid" id="score-rings"></div>
       <div class="divider" style="margin:20px 0 16px"></div>
       <div class="skill-bars" id="skill-bars"></div>
@@ -1145,9 +1145,8 @@ function renderSpeechAcePanel(saData){
     </div>
   `;
 
-  // Insert after AI feedback card, before session history
-  const historyCard = document.getElementById('history-card');
-  historyCard.parentNode.insertBefore(panel, historyCard);
+  const aiFeedbackCard = document.querySelector('#results .card:nth-child(3)');
+  aiFeedbackCard.parentNode.insertBefore(panel, aiFeedbackCard);
 }
 
 // ─── LANGUAGE PILLS ───────────────────────────────────────────────────────────

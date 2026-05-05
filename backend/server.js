@@ -225,6 +225,10 @@ app.post('/api/score', async (req, res) => {
         saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', speechaceTarget);
       }
     }
+    // SpeechAce fluency is unreliable for short free-speech — fallback to frontend score
+    if (saData && (saData.fluencyScore === 0 || saData.fluencyScore === null)) {
+      saData.fluencyScore = fluScore;
+    }
 
     // ── WORD-BY-WORD TRANSCRIPT ANALYSIS ────────────────────────────────────
     const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
