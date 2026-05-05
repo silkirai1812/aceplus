@@ -966,22 +966,22 @@ function scoreTranscript(transcript, target) {
       method:'POST',
       headers:getHeaders(),
       body:JSON.stringify({
-        transcript:currentTranscript,
-        target,
-        pronScore,gramScore,fluScore,vocabScore,
-        badWords,okWords,
-        ttsLang:currentTtsLang,
-        audioBase64:audioBase64ForSA,
-        audioMime,
-      }),
+      transcript:currentTranscript,
+      target,
+      pronScore,gramScore,fluScore,vocabScore,
+      badWords,okWords,
+      ttsLang:currentTtsLang,
+      audioBase64:audioBase64ForSA,
+      audioMime,
+      isCustom: currentScenario === 'custom',
+    }),
     });
     const data=await res.json();
     if(!res.ok) throw new Error(data.error||'Scoring failed');
 
     currentAudioBase64=data.audioBase64;
     lastScorePayload={transcript:currentTranscript,target,pronScore,gramScore,fluScore,vocabScore,badWords,okWords};
-    renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback:data.feedback});
-    renderSpeechAcePanel(data.speechaceData);
+    renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback:data.feedback, speechaceData:data.speechaceData});
     addHistory(currentTranscript,Math.round((pronScore+gramScore+fluScore+vocabScore)/4));
   }catch(err){
     showToast(err.message,'error');
@@ -990,7 +990,7 @@ function scoreTranscript(transcript, target) {
   }
 }
 
-function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback}){
+function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords,words,feedback,speechaceData}){
   // Word chips
   const chips=document.getElementById('word-chips');
   chips.innerHTML='';
@@ -1004,13 +1004,17 @@ function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords
   });
 
   // Score rings
-  const overall=Math.round((pronScore+gramScore+fluScore+vocabScore)/4);
-  const rings=[
-    {label:'Overall',score:overall,color:'#ff9933'},
-    {label:'Pronunciation',score:pronScore,color:'#0ea5e9'},
-    {label:'Grammar',score:gramScore,color:'#8b5cf6'},
-    {label:'Fluency',score:fluScore,color:'#f43f5e'},
-  ];
+  // Use SpeechAce scores if available, else fallback to frontend scores
+const displayPron = speechaceData?.pronunciationScore ?? pronScore;
+const displayFlu  = speechaceData?.fluencyScore ?? fluScore;
+const overall = Math.round((displayPron + gramScore + displayFlu + vocabScore) / 4);
+
+const rings=[
+  {label:'Overall',score:overall,color:'#ff9933'},
+  {label:'Pronunciation',score:displayPron,color:'#0ea5e9'},
+  {label:'Grammar',score:gramScore,color:'#8b5cf6'},
+  {label:'Fluency',score:displayFlu,color:'#f43f5e'},
+];
   const ringsEl=document.getElementById('score-rings');
   ringsEl.innerHTML='';
   rings.forEach(r=>{
@@ -1036,11 +1040,11 @@ function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords
 
   // Skill bars
   const skills=[
-    {name:'Pronunciation',score:pronScore,color:'#0ea5e9'},
-    {name:'Grammar',score:gramScore,color:'#8b5cf6'},
-    {name:'Fluency',score:fluScore,color:'#f43f5e'},
-    {name:'Vocabulary',score:vocabScore,color:'#f59e0b'},
-  ];
+  {name:'Pronunciation',score:displayPron,color:'#0ea5e9'},
+  {name:'Grammar',score:gramScore,color:'#8b5cf6'},
+  {name:'Fluency',score:displayFlu,color:'#f43f5e'},
+  {name:'Vocabulary',score:vocabScore,color:'#f59e0b'},
+];
   const barsEl=document.getElementById('skill-bars');
   barsEl.innerHTML='';
   skills.forEach(s=>{
@@ -1083,6 +1087,7 @@ function renderResults({pronScore,gramScore,fluScore,vocabScore,badWords,okWords
   });
 
   document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+  renderSpeechAcePanel(speechaceData);
 }
 
 function renderSpeechAcePanel(saData){
@@ -1242,7 +1247,7 @@ function playAudio(){
   // If paused midway — RESUME it
   if(currentAudio && currentAudio.paused){
     currentAudio.play();
-    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> Pause';
     btn.classList.add('playing');
     return;
   }
@@ -1259,7 +1264,7 @@ function playAudio(){
     btn.classList.remove('playing');
   };
   currentAudio.play();
-  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+  btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>Pause';
   btn.classList.add('playing');
 }
 
@@ -1576,7 +1581,7 @@ function playRpAudio(){
 
   if(rpAudioObj && rpAudioObj.paused){
     rpAudioObj.play();
-    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> ⏸ Pause';
+    btn.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>Pause';
     btn.classList.add('playing');
     return;
   }

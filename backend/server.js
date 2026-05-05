@@ -216,7 +216,8 @@ app.post('/api/score', async (req, res) => {
 
     // ── SPEECHACE SCORING (runs in parallel with prompt building) ────────────
     let saData = null;
-    if (target && clientAudioBase64) {
+    const isCustomScenario = req.body.isCustom === true;
+    if (isCustomScenario && target && clientAudioBase64) {
       // Only call SpeechAce in Scoring Mode where we have a target sentence
       const audioBuffer = Buffer.from(clientAudioBase64, 'base64');
       saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', target);
