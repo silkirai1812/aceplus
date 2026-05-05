@@ -37,6 +37,7 @@ const SARVAM_STT_URL  = 'https://api.sarvam.ai/speech-to-text';
 const SARVAM_TTS_URL  = 'https://api.sarvam.ai/text-to-speech';
 const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL      = 'llama-3.3-70b-versatile';
+const SPEECHACE_URL = 'https://api.speechace.co/api/scoring/text/v9/json';
 
 // ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
 const HINDI_MARKERS = new Set([
@@ -122,6 +123,72 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
     });
   } catch (err) {
     console.error('/api/transcribe error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/speechace-score ───────────────────────────────────────────────
+app.post('/api/speechace-score', upload.single('audio'), async (req, res) => {
+  try {
+    const speechaceKey = process.env.SPEECHACE_API_KEY;
+    if (!speechaceKey) return res.status(400).json({ error: 'SpeechAce API key not configured' });
+
+    const target = req.body.target;
+    if (!target) return res.status(400).json({ error: 'target text required' });
+    if (!req.file) return res.status(400).json({ error: 'audio file required' });
+
+    const form = new FormData();
+    form.append('user_audio_file', req.file.buffer, {
+      filename: 'audio.webm',
+      contentType: req.file.mimetype || 'audio/webm',
+    });
+    form.append('text', target);
+    form.append('include_fluency', '1');
+
+    const speechaceRes = await fetch(
+      `${SPEECHACE_URL}?key=${speechaceKey}&dialect=en-us&user_id=aceready_user`,
+      {
+        method: 'POST',
+        headers: { ...form.getHeaders() },
+        body: form,
+      }
+    );
+
+    if (!speechaceRes.ok) {
+      const errText = await speechaceRes.text();
+      console.error('SpeechAce error:', errText);
+      return res.status(502).json({ error: 'SpeechAce error', details: errText });
+    }
+
+    const data = await speechaceRes.json();
+
+    // Extract what we need cleanly
+    const wordScores = data.text_score?.word_score_list?.map(w => ({
+      word: w.word,
+      score: w.quality_score,
+      phonemes: w.phone_score_list?.map(p => ({
+        phone: p.phone,
+        score: p.quality_score,
+        soundedLike: p.sound_most_like,
+      })) || [],
+    })) || [];
+
+    const overall = data.text_score?.speechace_score ?? null;
+    const ielts   = data.text_score?.ielts_score ?? null;
+    const cefr    = data.text_score?.cefr_score ?? null;
+    const fluency = data.text_score?.fluency ?? null;
+
+    res.json({
+      wordScores,
+      overall,
+      ielts,
+      cefr,
+      fluency,
+      raw: data, // full response for debugging
+    });
+
+  } catch (err) {
+    console.error('/api/speechace-score error:', err);
     res.status(500).json({ error: err.message });
   }
 });
