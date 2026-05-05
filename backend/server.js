@@ -27,27 +27,26 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-// ─── KEY HELPER ──────────────────────────────────────────────────────────────
-// Keys can come from env vars (server) OR request headers (client-side entry)
+// ─── KEY HELPERS ─────────────────────────────────────────────────────────────
 function getSarvamKey(req) { return process.env.SARVAM_API_KEY || req.headers['x-sarvam-key'] || ''; }
-function getGroqKey(req) { return process.env.GROQ_API_KEY || req.headers['x-groq-key'] || ''; }
+function getGroqKey(req)   { return process.env.GROQ_API_KEY   || req.headers['x-groq-key']   || ''; }
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
-const SARVAM_TTS_URL = 'https://api.sarvam.ai/text-to-speech';
-const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const SPEECHACE_URL = 'https://api5.speechace.com/api/scoring/text/v9/json';
+const SARVAM_STT_URL  = 'https://api.sarvam.ai/speech-to-text';
+const SARVAM_TTS_URL  = 'https://api.sarvam.ai/text-to-speech';
+const GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL      = 'llama-3.3-70b-versatile';
+const SPEECHACE_URL   = 'https://api5.speechace.com/api/scoring/text/v9/json';
 
 // ─── LANGUAGE DETECTION ──────────────────────────────────────────────────────
 const HINDI_MARKERS = new Set([
-  'mera', 'meri', 'tera', 'teri', 'aap', 'tum', 'main', 'hum', 'yeh', 'woh', 'kya',
-  'hai', 'hain', 'tha', 'thi', 'the', 'ka', 'ki', 'ke', 'se', 'ko', 'mein', 'par',
-  'aur', 'ya', 'nahi', 'haan', 'kab', 'kahan', 'kaisa', 'kyun', 'achha', 'bahut',
-  'bilkul', 'zaroor', 'phir', 'abhi', 'kal', 'aaj', 'naam', 'ghar', 'paani',
-  'khana', 'dost', 'bhai', 'behen', 'matlab', 'thoda', 'zyada', 'sirf', 'bas',
-  'toh', 'lekin', 'kyunki', 'apna', 'apni', 'unka', 'unki', 'tumhara', 'hamara',
-  'isko', 'usko', 'inhe', 'unhe', 'yahan', 'wahan', 'idhar', 'udhar',
+  'mera','meri','tera','teri','aap','tum','main','hum','yeh','woh','kya',
+  'hai','hain','tha','thi','the','ka','ki','ke','se','ko','mein','par',
+  'aur','ya','nahi','haan','kab','kahan','kaisa','kyun','achha','bahut',
+  'bilkul','zaroor','phir','abhi','kal','aaj','naam','ghar','paani',
+  'khana','dost','bhai','behen','matlab','thoda','zyada','sirf','bas',
+  'toh','lekin','kyunki','apna','apni','unka','unki','tumhara','hamara',
+  'isko','usko','inhe','unhe','yahan','wahan','idhar','udhar',
 ]);
 
 function detectNonEnglish(transcript) {
@@ -57,7 +56,7 @@ function detectNonEnglish(transcript) {
   return null;
 }
 
-// ─── HELPERS ────────────────────────────────────────────────────────────────
+// ─── SARVAM TTS HELPER ───────────────────────────────────────────────────────
 async function sarvamTTS(text, key, lang = 'hi-IN') {
   const speaker = lang === 'en-IN' ? 'ritu' : 'priya';
   const res = await fetch(SARVAM_TTS_URL, {
@@ -78,6 +77,77 @@ async function sarvamTTS(text, key, lang = 'hi-IN') {
   if (!res.ok) throw new Error(`Sarvam TTS error ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return data.audios?.[0] ?? null;
+}
+
+// ─── SPEECHACE HELPER ────────────────────────────────────────────────────────
+// Calls SpeechAce and returns clean word/phoneme scores + fluency data
+// audioBuffer: Buffer of the audio file
+// target: the sentence the student was supposed to say
+async function scoreSpeechAce(audioBuffer, mimeType, target) {
+  const speechaceKey = process.env.SPEECHACE_API_KEY;
+  if (!speechaceKey) return null; // gracefully skip if key not set
+
+  try {
+    const form = new FormData();
+    form.append('user_audio_file', audioBuffer, {
+      filename: 'audio.webm',
+      contentType: mimeType || 'audio/webm',
+    });
+    form.append('text', target);
+    form.append('include_fluency', '1');
+
+    const res = await fetch(
+      `${SPEECHACE_URL}?key=${speechaceKey}&dialect=en-us&user_id=aceready_user`,
+      {
+        method: 'POST',
+        headers: { ...form.getHeaders() },
+        body: form,
+      }
+    );
+
+    if (!res.ok) {
+      console.error('SpeechAce HTTP error:', res.status);
+      return null;
+    }
+
+    const data = await res.json();
+    if (data.status !== 'success') {
+      console.error('SpeechAce API error:', data.detail_message);
+      return null;
+    }
+
+    // Extract word scores — find words that scored below 80 (need work)
+    const wordScores = data.text_score?.word_score_list?.map(w => ({
+      word: w.word,
+      score: w.quality_score,
+      // Find the weakest phoneme in this word
+      weakestPhone: w.phone_score_list?.reduce((worst, p) =>
+        (!worst || p.quality_score < worst.quality_score) ? p : worst
+      , null),
+    })) || [];
+
+    const weakWords = wordScores.filter(w => w.score < 80);
+    const goodWords = wordScores.filter(w => w.score >= 90);
+
+    return {
+      pronunciationScore: data.text_score?.speechace_score?.pronunciation ?? null,
+      fluencyScore:       data.text_score?.speechace_score?.fluency ?? null,
+      ielts:              data.text_score?.ielts_score ?? null,
+      cefr:               data.text_score?.cefr_score ?? null,
+      wordScores,
+      weakWords,   // words that need improvement
+      goodWords,   // words pronounced well
+      fluencyDetail: {
+        speechRate:    data.text_score?.fluency?.overall_metrics?.speech_rate ?? null,
+        pauseCount:    data.text_score?.fluency?.overall_metrics?.all_pause_count ?? null,
+        pauseDuration: data.text_score?.fluency?.overall_metrics?.all_pause_duration ?? null,
+        wordsPerMin:   data.text_score?.fluency?.overall_metrics?.word_correct_per_minute ?? null,
+      },
+    };
+  } catch (err) {
+    console.error('SpeechAce call failed:', err.message);
+    return null; // non-fatal — app still works without SpeechAce
+  }
 }
 
 // ─── POST /api/transcribe ────────────────────────────────────────────────────
@@ -127,116 +197,75 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
   }
 });
 
-// ─── POST /api/speechace-score ───────────────────────────────────────────────
-app.post('/api/speechace-score', upload.single('audio'), async (req, res) => {
-  try {
-    const speechaceKey = process.env.SPEECHACE_API_KEY;
-    if (!speechaceKey) return res.status(400).json({ error: 'SpeechAce API key not configured' });
-
-    const target = req.body.target;
-    if (!target) return res.status(400).json({ error: 'target text required' });
-    if (!req.file) return res.status(400).json({ error: 'audio file required' });
-
-    const form = new FormData();
-    form.append('user_audio_file', req.file.buffer, {
-      filename: 'audio.webm',
-      contentType: req.file.mimetype || 'audio/webm',
-    });
-    form.append('text', target);
-    form.append('include_fluency', '1');
-
-    const speechaceRes = await fetch(
-      `${SPEECHACE_URL}?key=${speechaceKey}&dialect=en-us&user_id=aceready_user`,
-      {
-        method: 'POST',
-        headers: { ...form.getHeaders() },
-        body: form,
-      }
-    );
-
-    if (!speechaceRes.ok) {
-      const errText = await speechaceRes.text();
-      console.error('SpeechAce error:', errText);
-      return res.status(502).json({ error: 'SpeechAce error', details: errText });
-    }
-
-    const data = await speechaceRes.json();
-
-    // Extract what we need cleanly
-    const wordScores = data.text_score?.word_score_list?.map(w => ({
-      word: w.word,
-      score: w.quality_score,
-      phonemes: w.phone_score_list?.map(p => ({
-        phone: p.phone,
-        score: p.quality_score,
-        soundedLike: p.sound_most_like,
-      })) || [],
-    })) || [];
-
-    const overall = data.text_score?.speechace_score ?? null;
-    const ielts = data.text_score?.ielts_score ?? null;
-    const cefr = data.text_score?.cefr_score ?? null;
-    const fluency = data.text_score?.fluency ?? null;
-
-    res.json({
-      wordScores,
-      overall,
-      ielts,
-      cefr,
-      fluency,
-      raw: data, // full response for debugging
-    });
-
-  } catch (err) {
-    console.error('/api/speechace-score error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ─── POST /api/score ─────────────────────────────────────────────────────────
+// Now accepts optional audioBuffer for SpeechAce scoring
+// Frontend sends audio as base64 in the JSON body alongside transcript
 app.post('/api/score', async (req, res) => {
   try {
-    const { transcript, target, pronScore, gramScore, fluScore, vocabScore, badWords, okWords, ttsLang = 'hi-IN' } = req.body;
+    const {
+      transcript, target, pronScore, gramScore, fluScore, vocabScore,
+      badWords, okWords, ttsLang = 'hi-IN',
+      audioBase64: clientAudioBase64, // optional — base64 audio from frontend
+      audioMime,                      // optional — mime type of audio
+    } = req.body;
+
     if (!transcript) return res.status(400).json({ error: 'transcript required' });
     const groqKey = getGroqKey(req);
     if (!groqKey) return res.status(400).json({ error: 'Groq API key not provided' });
     const sarvamKey = getSarvamKey(req);
 
-    const overall = Math.round((pronScore + gramScore + fluScore + vocabScore) / 4);
+    // ── SPEECHACE SCORING (runs in parallel with prompt building) ────────────
+    let saData = null;
+    if (target && clientAudioBase64) {
+      // Only call SpeechAce in Scoring Mode where we have a target sentence
+      const audioBuffer = Buffer.from(clientAudioBase64, 'base64');
+      saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', target);
+    }
 
-    // Analyse word-by-word differences between target and transcript
+    // ── WORD-BY-WORD TRANSCRIPT ANALYSIS ────────────────────────────────────
     const targetWords = (target || '').toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
     const spokenWords = transcript.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/).filter(Boolean);
 
-    // Find missing words (in target but not spoken)
     const missingWords = targetWords.filter(w => !spokenWords.includes(w));
+    const extraWords   = spokenWords.filter(w => !targetWords.includes(w));
 
-    // Find extra words (spoken but not in target) — catches stammers, fillers
-    const extraWords = spokenWords.filter(w => !targetWords.includes(w));
-
-    // Find filler words
-    const FILLERS = ['um', 'uh', 'er', 'ah', 'like', 'basically', 'actually', 'so', 'you know'];
+    const FILLERS = ['um','uh','er','ah','like','basically','actually','so','you know'];
     const fillersUsed = spokenWords.filter(w => FILLERS.includes(w));
 
-    // Word count comparison
     const wordCountDiff = spokenWords.length - targetWords.length;
     const wordCountNote = target
       ? wordCountDiff < -3 ? `Student spoke ${Math.abs(wordCountDiff)} fewer words than expected — response too short`
-        : wordCountDiff > 5 ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
-          : 'Word count is appropriate'
+      : wordCountDiff > 5  ? `Student added ${wordCountDiff} extra words — possible repetition or rambling`
+      : 'Word count is appropriate'
       : `Student spoke ${spokenWords.length} words`;
 
-    // Sentence structure check — detect repetitions
-    const words = spokenWords;
     const repetitions = [];
-    for (let i = 0; i < words.length - 1; i++) {
-      if (words[i] === words[i + 1]) repetitions.push(words[i]);
+    for (let i = 0; i < spokenWords.length - 1; i++) {
+      if (spokenWords[i] === spokenWords[i + 1]) repetitions.push(spokenWords[i]);
     }
+
+    const overall = Math.round((pronScore + gramScore + fluScore + vocabScore) / 4);
+
+    // ── BUILD GROQ PROMPT ────────────────────────────────────────────────────
+    // If SpeechAce data is available, include it for richer feedback
+    const speechaceSection = saData ? `
+SPEECHACE PRONUNCIATION DATA (real phoneme-level analysis):
+- Pronunciation score: ${saData.pronunciationScore}/100
+- Fluency score: ${saData.fluencyScore}/100
+- IELTS equivalent: Pronunciation ${saData.ielts?.pronunciation}/9, Fluency ${saData.ielts?.fluency}/9
+- CEFR level: Pronunciation ${saData.cefr?.pronunciation}, Fluency ${saData.cefr?.fluency}
+- Words needing improvement (scored below 80): ${saData.weakWords.length ? saData.weakWords.map(w => `"${w.word}" (${w.score}%)${w.weakestPhone ? ` — weakest sound: "${w.weakestPhone.phone}"` : ''}`).join(', ') : 'none — all words pronounced well'}
+- Speech rate: ${saData.fluencyDetail.wordsPerMin ? Math.round(saData.fluencyDetail.wordsPerMin) + ' words/min' : 'unknown'}
+- Pauses detected: ${saData.fluencyDetail.pauseCount ?? 'unknown'} pauses totalling ${saData.fluencyDetail.pauseDuration ?? '?'} seconds
+` : `
+SPEECHACE DATA: Not available for this attempt (no target sentence or audio not provided).
+Use transcript analysis below as the basis for pronunciation feedback.
+`;
 
     const userPrompt = `
 You are evaluating a student's spoken English response.
 
-SCENARIO CONTEXT (what the student was asked to do — this is a situation, NOT a script they must follow word for word): "${target || '(free speech)'}"
+TARGET (what student was supposed to say): "${target || '(free speech — no fixed target)'}"
 STUDENT ACTUALLY SAID: "${transcript}"
 
 FRONTEND SCORES (0-100):
@@ -247,34 +276,31 @@ FRONTEND SCORES (0-100):
 - Overall: ${overall}
 ${speechaceSection}
 TRANSCRIPT ANALYSIS:
+- Words in target but missing from response: ${missingWords.length ? missingWords.join(', ') : 'none'}
+- Extra/unexpected words spoken: ${extraWords.length ? extraWords.join(', ') : 'none'}
 - Filler words used: ${fillersUsed.length ? fillersUsed.join(', ') : 'none'}
 - Repeated words (stammers): ${repetitions.length ? repetitions.join(', ') : 'none'}
 - ${wordCountNote}
 - Mispronounced words (basic check): ${badWords?.length ? badWords.join(', ') : 'none'}
 
 INSTRUCTIONS:
-- Write as a warm human English teacher talking directly to the student — NOT as an AI giving a technical report
-- NEVER mention score numbers in feedback (no "your vocabulary score was 57")
-- NEVER say "the prompt", "key words from the prompt", "the target sentence" — students don't know these exist
-- NEVER use technical words like "filler words", "transcript", "fluency score", "vocabulary score"
-- NEVER list specific words the student missed from the scenario context
-- The scenario context is just for your understanding of what situation the student was in — do not treat it as a required script
-- Instead of "you used filler words like 'like'" → say "try to speak without pausing to say 'like' in between your sentences"
-- Instead of "you missed key words" → say "try to give more detail about what you want" naturally
-- If student stammered or repeated words, mention it naturally like a teacher would
-- If fluency is low, say it in simple terms — "try to speak a little faster and more smoothly"
-- Feedback should sound like a teacher saying it out loud to a child, warm and encouraging
-- For young Indian students — be specific about what to practice next, not what they did wrong
+- If SpeechAce data is available, use it as the primary source for pronunciation feedback — it is more accurate than the frontend score
+- Mention specific weak words by name if SpeechAce flagged them
+- If fluency score is low, explain why using the pause count and speech rate data
+- Be specific — reference actual words from the transcript
+- For young Indian students — be warm but honest
+- Do NOT give generic praise if scores show real issues
 
 Respond with ONLY valid JSON (no markdown):
 {
-  "summary": "2-3 sentences written like a teacher talking to the student directly",
-  "strengths": ["one specific thing they did well, described naturally"],
-  "improvements": ["one specific thing to practice, described like a teacher would say it"],
+  "summary": "2-3 sentences referencing specific words or scores from the data above",
+  "strengths": ["specific strength with example from their actual speech"],
+  "improvements": ["specific issue with word/score as evidence"],
   "encouragement": "one warm closing sentence",
-  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only — example: आपने बहुत अच्छा बोला! अंग्रेज़ी में और अभ्यास करते रहो, आप ज़रूर आगे बढ़ोगे!' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only — example: তুমি খুব সুন্দরভাবে কথা বলেছ! ইংরেজিতে আরও অনুশীলন করতে থাকো, তুমি অবশ্যই এগিয়ে যাবে!' : 'clear warm English — example: Great effort today! Keep practicing your English every day and you will improve.'} to be read aloud to the student — make sure the language matches exactly"
+  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only' : 'clear warm English'} to be read aloud"
 }`;
 
+    // ── CALL GROQ ────────────────────────────────────────────────────────────
     const groqRes = await fetch(GROQ_URL, {
       method: 'POST',
       headers: {
@@ -290,13 +316,7 @@ Respond with ONLY valid JSON (no markdown):
 You deeply understand Indian English phonology: retroflex consonants, v/w substitution, vowel-length collapse, dental vs alveolar stops, and present-continuous overuse.
 NEVER penalise Indian accent features — only flag things that cause genuine miscommunication.
 Accept standard Indian English spellings: colour, centre, behaviour, maths, programme.
-
-SCORING RULES (be strict and accurate):
-- Reserve 90+ only for near-native English with almost no errors.
-- Score 70-89 for good English with minor accent/grammar issues.
-- Score 50-69 for understandable English with noticeable errors.
-- Score below 50 if the student mixed Hindi/other languages into the response, spoke mostly in another language, or has major comprehension-affecting errors.
-- If non-English words were used, explicitly mention this in improvements.
+When SpeechAce data is provided, trust it over your own assumptions about pronunciation.
 Be honest — accurate feedback helps students improve more than empty praise.`,
           },
           { role: 'user', content: userPrompt },
@@ -329,17 +349,53 @@ Be honest — accurate feedback helps students improve more than empty praise.`,
       };
     }
 
+    // ── TTS ──────────────────────────────────────────────────────────────────
     let audioBase64 = null;
-    let spokenText = feedback.spoken_summary || feedback.summary || '';
+    const spokenText = feedback.spoken_summary || feedback.summary || '';
     try {
       audioBase64 = await sarvamTTS(spokenText, sarvamKey, ttsLang);
     } catch (ttsErr) {
       console.warn('TTS failed (non-fatal):', ttsErr.message);
     }
 
-    res.json({ feedback, audioBase64, spokenText });
+    // ── RESPONSE — includes speechaceData for frontend comparison panel ──────
+    res.json({
+      feedback,
+      audioBase64,
+      spokenText,
+      speechaceData: saData ? {
+        pronunciationScore: saData.pronunciationScore,
+        fluencyScore:       saData.fluencyScore,
+        ielts:              saData.ielts,
+        cefr:               saData.cefr,
+        wordScores:         saData.wordScores,
+        weakWords:          saData.weakWords,
+        fluencyDetail:      saData.fluencyDetail,
+      } : null,
+    });
+
   } catch (err) {
     console.error('/api/score error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/speechace-score (standalone endpoint for direct testing) ──────
+app.post('/api/speechace-score', upload.single('audio'), async (req, res) => {
+  try {
+    const speechaceKey = process.env.SPEECHACE_API_KEY;
+    if (!speechaceKey) return res.status(400).json({ error: 'SpeechAce API key not configured' });
+
+    const target = req.body.target;
+    if (!target) return res.status(400).json({ error: 'target text required' });
+    if (!req.file) return res.status(400).json({ error: 'audio file required' });
+
+    const saData = await scoreSpeechAce(req.file.buffer, req.file.mimetype, target);
+    if (!saData) return res.status(502).json({ error: 'SpeechAce scoring failed' });
+
+    res.json(saData);
+  } catch (err) {
+    console.error('/api/speechace-score error:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -412,7 +468,6 @@ Be warm, patient, and encouraging. Do not break character. Do not add stage dire
     const groqData = await groqRes.json();
     const reply = groqData.choices?.[0]?.message?.content?.trim() ?? "I didn't catch that, could you repeat?";
 
-    // TTS the character's reply
     let audioBase64 = null;
     try {
       audioBase64 = await sarvamTTS(reply, sarvamKey);
@@ -429,12 +484,14 @@ Be warm, patient, and encouraging. Do not break character. Do not add stage dire
 
 // ─── GET /api/health ──────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
-  const sarvam = !!process.env.SARVAM_API_KEY;
-  const groq = !!process.env.GROQ_API_KEY;
+  const sarvam    = !!process.env.SARVAM_API_KEY;
+  const groq      = !!process.env.GROQ_API_KEY;
+  const speechace = !!process.env.SPEECHACE_API_KEY;
   res.json({
     status: sarvam && groq ? 'ok' : 'degraded',
     sarvam,
     groq,
+    speechace,
     timestamp: new Date().toISOString(),
   });
 });
