@@ -259,7 +259,7 @@ if (forceLang) {
     if (clientAudioBase64) {
       // Only call SpeechAce in Scoring Mode where we have a target sentence
       // Use transcript as target for free speech scenarios so SpeechAce scores pronunciation accurately
-      const speechaceTarget = (target && target.trim()) ? target : transcript;
+      const speechaceTarget = transcript;
       if (clientAudioBase64 && speechaceTarget) {
         const audioBuffer = Buffer.from(clientAudioBase64, 'base64');
         saData = await scoreSpeechAce(audioBuffer, audioMime || 'audio/webm', speechaceTarget);
