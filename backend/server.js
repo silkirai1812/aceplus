@@ -213,10 +213,11 @@ app.post('/api/score', async (req, res) => {
     // ── FAST PATH: language switch only — just regenerate spoken_summary in new language ──
 if (forceLang) {
   const langPrompt = `Write ONLY 2-3 warm encouraging sentences in ${
-    ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only — example: आपने बहुत अच्छा बोला! अंग्रेज़ी में और अभ्यास करते रहो!'
-    : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only — example: তুমি খুব সুন্দরভাবে কথা বলেছ! ইংরেজিতে আরও অনুশীলন করতে থাকো!'
-    : 'clear warm English — example: Great effort! Keep practicing your English every day!'
-  } to be read aloud to a student who just practiced spoken English. Be warm and encouraging. Write ONLY the sentences, nothing else.`;
+  ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only — example: आपने बहुत अच्छा बोला! अंग्रेज़ी में और अभ्यास करते रहो!'
+  : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only — example: তুমি খুব সুন্দরভাবে কথা বলেছ! ইংরেজিতে আরও অনুশীলন করতে থাকো!'
+  : ttsLang === 'gu-IN' ? 'Gujarati using Gujarati script only — example: તમે ખૂબ સારું બોલ્યા! અંગ્રેજીમાં વધુ અભ્યાસ કરતા રહો!'
+  : 'clear warm English — example: Great effort! Keep practicing your English every day!'
+} to be read aloud to a student who just practiced spoken English. Be warm and encouraging. Write ONLY the sentences, nothing else.`;
 
   const groqKey = getGroqKey(req);
   const sarvamKey = getSarvamKey(req);
@@ -346,7 +347,7 @@ Respond with ONLY valid JSON (no markdown):
   "strengths": ["specific strength with example from their actual speech"],
   "improvements": ["specific issue with word/score as evidence"],
   "encouragement": "one warm closing sentence",
-  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only' : 'clear warm English'} to be read aloud"
+  "spoken_summary": "2-3 warm sentences in ${ttsLang === 'hi-IN' ? 'Hindi using Devanagari script only' : ttsLang === 'bn-IN' ? 'Bengali using Bengali script only' : ttsLang === 'gu-IN' ? 'Gujarati using Gujarati script only — example: તમે ખૂબ સારું બોલ્યા! અંગ્રેજીમાં વધુ અભ્યાસ કરતા રહો!' : 'clear warm English'} to be read aloud"
 }`;
 
     // ── CALL GROQ ────────────────────────────────────────────────────────────
