@@ -1462,9 +1462,9 @@ async function endRoleplay(){
 
   const evalSection=document.getElementById('rp-eval-section');
   evalSection.style.display='block';
-  document.getElementById('rp-eval-loading-card').style.display = 'none';
-  document.getElementById('rp-scores-card').style.display = 'block';
-  document.getElementById('rp-feedback-outer-card').style.display = 'block';
+  document.getElementById('rp-eval-loading-card').style.display = 'block';
+document.getElementById('rp-scores-card').style.display = 'none';
+document.getElementById('rp-feedback-outer-card').style.display = 'none';
   evalSection.scrollIntoView({behavior:'smooth',block:'start'});
 
   const{pronScore,gramScore,fluScore,vocabScore,badWords,okWords}=scoreTranscript(studentTurns,'');
@@ -1509,8 +1509,9 @@ try{
 }
 
 function renderRoleplayEval(feedback, {pronScore, gramScore, fluScore, vocabScore}, speechaceData) {
-  document.getElementById('rp-eval-loading').style.display = 'none';
-  document.getElementById('rp-eval-content').style.display = 'block';
+  document.getElementById('rp-eval-loading-card').style.display = 'none';
+  document.getElementById('rp-scores-card').style.display = 'block';
+  document.getElementById('rp-feedback-outer-card').style.display = 'block';
 
   const displayPron = speechaceData?.pronunciationScore ?? pronScore;
   const displayFlu  = (speechaceData?.fluencyScore && speechaceData.fluencyScore > 0)
